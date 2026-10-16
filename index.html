@@ -1,0 +1,1885 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>STUDIO 042</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="STUDIO 042">
+<meta name="theme-color" content="#0C0A09">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=IBM+Plex+Sans+KR:wght@300;500;700&display=swap">
+<style>
+/* 암실(darkroom) 콘셉트: 손님 화면은 전면 뷰파인더, 관리자 화면은 좌우 2단 편집기 */
+:root{
+  --ink:#0C0A09; --panel:#1A1413; --panel2:#241C1A; --line:#2F2522;
+  --fg:#F3ECE4; --muted:#9C8C82;
+  --safelight:#FF4D2E; --lamp:#FFC247;
+  --display:'Anton','Arial Narrow',sans-serif;
+  --body:'IBM Plex Sans KR',-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo',sans-serif;
+  color-scheme: dark;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0}
+body{
+  background:var(--ink); color:var(--fg);
+  font-family:var(--body); font-weight:300;
+  overscroll-behavior:none; touch-action:manipulation;
+  -webkit-user-select:none; user-select:none;
+}
+img{max-width:100%}
+[hidden]{display:none!important}
+
+.screen{
+  position:fixed; inset:0; display:flex; flex-direction:column;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+}
+
+/* ── 공통 ─────────────────────────────── */
+.eyebrow{font-size:12px;font-weight:500;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);margin:0}
+button{font-family:inherit;font-weight:500;cursor:pointer;border:0;background:none;color:inherit}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  min-height:52px;padding:0 20px;border-radius:4px;font-size:16px;
+  background:var(--panel);color:var(--fg);border:1px solid var(--line);
+  transition:transform .12s ease,border-color .12s ease}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--safelight);color:#1A0A06;border-color:var(--safelight);font-weight:700}
+.btn.ghost{background:transparent}
+.btn.sm{min-height:40px;padding:0 13px;font-size:13px}
+.btn.danger{color:var(--safelight);border-color:#4A211A}
+.btn:focus-visible{outline:2px solid var(--lamp);outline-offset:3px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+input[type=text],input[type=number],select{
+  font-family:inherit;font-size:15px;font-weight:300;
+  background:var(--panel2);color:var(--fg);border:1px solid var(--line);
+  border-radius:4px;padding:10px 11px;min-width:0;width:100%;-webkit-user-select:text;user-select:text}
+input[type=color]{width:46px;height:42px;padding:2px;background:var(--panel2);border:1px solid var(--line);border-radius:4px}
+label.lab{display:flex;flex-direction:column;gap:5px;font-size:11px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted);min-width:0}
+
+/* ── 1. 손님 시작 화면 ────────────────── */
+#setup{justify-content:center;gap:clamp(18px,3vh,32px);overflow-y:auto;padding-block:26px}
+.setup-head{display:flex;flex-direction:column;gap:9px;align-items:flex-start}
+#brandEdit{font-family:var(--display);font-size:clamp(34px,6vw,56px);letter-spacing:.06em;
+  background:none;border:0;border-bottom:1px dashed transparent;color:var(--fg);
+  padding:0;width:100%;max-width:11ch;line-height:1.1}
+#brandEdit:focus{outline:none;border-bottom-color:var(--safelight)}
+.note{font-size:13px;color:var(--muted);line-height:1.6}
+.note b{color:var(--fg);font-weight:500}
+.field{display:flex;flex-direction:column;gap:11px}
+.modes{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.mode{display:flex;gap:13px;align-items:center;padding:14px;border:1px solid var(--line);
+  border-radius:6px;background:var(--panel);text-align:left;min-width:0}
+.mode[aria-pressed=true]{border-color:var(--safelight);background:#241715}
+.mode-name{font-size:16px;font-weight:700}
+.mode-sub{font-size:12px;color:var(--muted)}
+.mini{background:#fff;border-radius:2px;flex:none;position:relative;overflow:hidden}
+.mini i{position:absolute;background:#C9BDB4}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{padding:10px 15px;border-radius:999px;font-size:14px;border:1px solid var(--line);
+  background:var(--panel);color:var(--muted)}
+.chip[aria-pressed=true]{border-color:var(--lamp);color:var(--lamp);background:#231B10}
+
+/* ── 2. 촬영 ──────────────────────────── */
+#shoot{justify-content:center;align-items:center;gap:16px;padding-block:18px}
+.stage{position:relative;width:100%;max-width:min(92vw,68vh*var(--ar-num));
+  aspect-ratio:var(--ar);background:#000;border-radius:6px;overflow:hidden;
+  box-shadow:0 0 0 1px var(--line);isolation:isolate}
+#video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);display:block}
+/* 보정 층 — 인화 합성과 겹치는 순서가 같습니다 */
+.lay{position:absolute;inset:0;pointer-events:none}
+.lay.soft{-webkit-backdrop-filter:blur(0);backdrop-filter:blur(0)}
+.lay.fade{background:#FFFFFF;mix-blend-mode:screen;opacity:0}
+.stage::after{content:'';position:absolute;inset:0;pointer-events:none;
+  box-shadow:inset 0 0 90px rgba(0,0,0,.45)}
+#flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;
+  transition:opacity .09s ease-out;z-index:3}
+#flash.on{opacity:1;transition:none}
+.count{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:5px;z-index:2}
+.count .n{font-family:var(--display);font-size:clamp(90px,21vw,180px);line-height:.85;
+  text-shadow:0 6px 40px rgba(0,0,0,.65)}
+.count .cue{font-size:15px;letter-spacing:.14em;color:var(--lamp);text-transform:uppercase}
+.ticks{position:absolute;top:13px;left:0;right:0;z-index:2;display:flex;gap:6px;justify-content:center}
+.tick{width:32px;height:3px;border-radius:2px;background:rgba(255,255,255,.28)}
+.tick.done{background:var(--safelight)}
+
+/* ── 3. 결과 ──────────────────────────── */
+#result{justify-content:center;align-items:center;gap:18px;padding-block:22px;overflow-y:auto}
+#resultImg{max-height:56vh;width:auto;border-radius:3px;
+  box-shadow:0 18px 50px rgba(0,0,0,.6),0 0 0 1px var(--line)}
+.hint{font-size:13px;color:var(--muted);text-align:center;line-height:1.6;max-width:36ch}
+
+/* ── 4. 관리자 ────────────────────────── */
+#admin{gap:0;padding:0}
+.adm-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:12px max(16px,env(safe-area-inset-left,0px));
+  padding-top:calc(12px + env(safe-area-inset-top,0px));
+  border-bottom:1px solid var(--line);background:var(--panel)}
+.adm-bar .sp{flex:1}
+.adm-title{font-family:var(--display);font-size:22px;letter-spacing:.05em}
+.adm-body{flex:1;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(300px,.9fr);
+  gap:0;overflow:hidden}
+@media (max-width:860px){ .adm-body{grid-template-columns:1fr;overflow-y:auto} }
+.adm-stage{display:flex;flex-direction:column;gap:12px;padding:16px;overflow:auto;
+  background:#0A0807;border-right:1px solid var(--line);align-items:center;justify-content:flex-start}
+.adm-side{display:flex;flex-direction:column;gap:16px;padding:16px;overflow-y:auto}
+.card{display:flex;flex-direction:column;gap:11px;padding:14px;border:1px solid var(--line);
+  border-radius:6px;background:var(--panel)}
+.card h3{margin:0;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);font-weight:500}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+
+/* 편집 캔버스 */
+.editor{position:relative;background:#fff;max-width:100%;
+  box-shadow:0 10px 40px rgba(0,0,0,.5);touch-action:none}
+.editor .layer{position:absolute;inset:0;background-size:100% 100%;background-repeat:no-repeat}
+.editor .frameLayer{opacity:.75;pointer-events:none}
+.slot{position:absolute;border:2px solid var(--safelight);background:rgba(255,77,46,.14);
+  display:flex;align-items:center;justify-content:center;cursor:move;touch-action:none}
+.slot.sel{border-color:var(--lamp);background:rgba(255,194,71,.2);z-index:4}
+.slot span{font-family:var(--display);font-size:clamp(13px,2.4vw,22px);color:#fff;
+  text-shadow:0 1px 4px rgba(0,0,0,.8);pointer-events:none}
+.slot .hd{position:absolute;right:-9px;bottom:-9px;width:22px;height:22px;border-radius:50%;
+  background:var(--lamp);border:2px solid #1A1413;cursor:nwse-resize;touch-action:none}
+.txt{position:absolute;border:1px dashed var(--muted);padding:1px 3px;color:#111;
+  white-space:nowrap;cursor:move;touch-action:none;transform:translate(-50%,-50%)}
+.txt.sel{border-color:var(--lamp);border-style:solid}
+/* 보정 편집 */
+.lookprev{position:relative;width:100%;aspect-ratio:4/3;background:#0A0807;
+  border:1px solid var(--line);border-radius:5px;overflow:hidden;isolation:isolate}
+#pvVideo{width:100%;height:100%;object-fit:cover;display:block}
+.pvOff{position:absolute;inset:0;margin:0;display:flex;align-items:center;justify-content:center;
+  font-size:13px;color:var(--muted);text-align:center;padding:12px;z-index:5}
+.sliders{display:flex;flex-direction:column;gap:9px}
+.sl{display:grid;grid-template-columns:5.5em 1fr 3em;align-items:center;gap:9px}
+.sl label{font-size:12px;color:var(--muted)}
+.sl output{font-size:12px;color:var(--fg);text-align:right;font-variant-numeric:tabular-nums}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:26px;background:none}
+input[type=range]::-webkit-slider-runnable-track{height:3px;background:var(--line);border-radius:2px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;
+  border-radius:50%;background:var(--safelight);margin-top:-10px;border:2px solid #1A1413}
+input[type=range]::-moz-range-track{height:3px;background:var(--line);border-radius:2px}
+input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;
+  background:var(--safelight);border:2px solid #1A1413}
+.layoutlist{display:flex;flex-direction:column;gap:6px}
+.lrow{display:flex;align-items:center;gap:9px;padding:9px 11px;border:1px solid var(--line);
+  border-radius:4px;background:var(--panel2);font-size:14px;text-align:left;width:100%}
+.lrow[aria-pressed=true]{border-color:var(--safelight)}
+.lrow .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lrow .off{font-size:11px;color:var(--muted);letter-spacing:.1em}
+.txtrow{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--line);
+  border-radius:4px;background:var(--panel2);font-size:13px;width:100%;text-align:left}
+.txtrow[aria-pressed=true]{border-color:var(--lamp)}
+.filepick{position:relative;overflow:hidden}
+.filepick input[type=file]{position:absolute;inset:0;opacity:0;width:100%;height:100%}
+
+#msg{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));
+  transform:translateX(-50%);z-index:60;background:var(--panel);border:1px solid var(--line);
+  padding:12px 19px;border-radius:4px;font-size:14px;max-width:min(90vw,42ch);
+  text-align:center;line-height:1.5}
+
+#confirm{position:fixed;inset:0;z-index:70;background:rgba(6,4,4,.82);
+  display:flex;align-items:center;justify-content:center;padding:20px}
+.cbox{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:20px;
+  max-width:34ch;display:flex;flex-direction:column;gap:15px}
+.cbox p{margin:0;font-size:15px;line-height:1.6}
+
+@media (prefers-reduced-motion:reduce){*{transition-duration:.01ms!important}}
+
+/* 인쇄: 사진 한 장이 용지 한 면에 통째로 */
+@media print{
+  html,body{height:auto;margin:0;background:#fff}
+  .screen{position:static;padding:0}
+  #setup,#shoot,#admin,#msg,#confirm,.result-actions,.hint,#result .eyebrow{display:none!important}
+  #result{display:flex!important;align-items:center;justify-content:center;
+    width:100%;height:100vh;margin:0;padding:0;overflow:hidden;page-break-inside:avoid}
+  #resultImg{width:auto;height:auto;max-width:100%;max-height:100vh;object-fit:contain;
+    box-shadow:none;border-radius:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+<style id="pageSize">@page{ size:4in 6in; margin:0 }</style>
+</head>
+<body>
+
+<!-- 1. 손님 시작 -->
+<section class="screen" id="setup">
+  <div class="setup-head">
+    <p class="eyebrow">Self Photo Booth</p>
+    <input id="brandEdit" maxlength="14" aria-label="인화지에 찍힐 이름"
+           autocomplete="off" autocapitalize="characters" spellcheck="false">
+    <p class="note">이름을 바꾸면 인화지에 그대로 찍힙니다. 이름을 <b>길게 누르면</b> 관리자 화면이 열립니다.</p>
+  </div>
+  <div class="field">
+    <p class="eyebrow">인화 방식</p>
+    <div class="modes" id="modes" role="group" aria-label="인화 방식"></div>
+  </div>
+  <div class="field">
+    <p class="eyebrow">보정</p>
+    <div class="chips" id="filters" role="group" aria-label="보정"></div>
+  </div>
+  <div class="field">
+    <p class="eyebrow">셀프 타이머</p>
+    <div class="chips" id="timers" role="group" aria-label="셀프 타이머"></div>
+  </div>
+  <button class="btn primary" id="startBtn" style="width:100%">촬영 시작</button>
+  <p class="note" id="shotNote"></p>
+</section>
+
+<!-- 2. 촬영 -->
+<section class="screen" id="shoot" hidden>
+  <div class="stage" id="stage">
+    <video id="video" playsinline muted autoplay></video>
+    <div class="lay soft" id="softLayer"></div>
+    <div class="lay" id="tintLayer"></div>
+    <div class="lay fade" id="fadeLayer"></div>
+    <div class="lay" id="vignLayer"></div>
+    <div class="ticks" id="ticks"></div>
+    <div class="count" id="count" hidden>
+      <div class="n" id="countNum">3</div>
+      <div class="cue" id="countCue">준비</div>
+    </div>
+    <div id="flash"></div>
+  </div>
+  <div class="row" style="justify-content:center">
+    <button class="btn ghost" id="cancelBtn">그만두기</button>
+    <button class="btn ghost" id="flipBtn">카메라 전환</button>
+  </div>
+</section>
+
+<!-- 3. 결과 -->
+<section class="screen" id="result" hidden>
+  <p class="eyebrow">인화 미리보기</p>
+  <img id="resultImg" alt="합성된 인화지">
+  <div class="row result-actions" style="justify-content:center">
+    <button class="btn primary" id="saveBtn">사진 앱에 저장</button>
+    <button class="btn" id="printBtn">인쇄</button>
+    <button class="btn ghost" id="againBtn">다시 찍기</button>
+  </div>
+  <p class="hint">저장을 누르면 공유 시트가 열립니다. <b>이미지 저장</b>을 고르면 사진 앱에 들어갑니다.<br>
+  인쇄 창에서는 <b>머리말·꼬리말을 끄고</b> 용지를 인화지 크기로 두세요.</p>
+</section>
+
+<!-- 4. 관리자 -->
+<section class="screen" id="admin" hidden>
+  <div class="adm-bar">
+    <span class="adm-title">관리자</span>
+    <span class="sp"></span>
+    <button class="btn sm ghost" id="admPreview">미리보기</button>
+    <button class="btn sm ghost" id="admExport">설정 내보내기</button>
+    <label class="btn sm ghost filepick">설정 가져오기<input type="file" id="admImport" accept="application/json"></label>
+    <button class="btn sm primary" id="admClose">나가기</button>
+  </div>
+  <div class="adm-body">
+    <div class="adm-stage">
+      <p class="eyebrow">사진 칸을 끌어서 옮기고, 오른쪽 아래 손잡이로 크기를 바꿉니다</p>
+      <div class="editor" id="editor"></div>
+      <p class="note" id="editNote"></p>
+    </div>
+    <div class="adm-side">
+
+      <div class="card">
+        <h3>카메라</h3>
+        <select id="camPick" aria-label="쓸 카메라"><option value="">기본 카메라</option></select>
+        <div class="row">
+          <button class="btn sm" id="camScan">카메라 다시 찾기</button>
+          <button class="btn sm ghost" id="camFlip">앞뒤 전환</button>
+        </div>
+        <p class="note" id="camNote">외장 카메라를 꽂았다면 여기서 골라야 포토부스가 그 카메라를 씁니다.
+        이름이 안 보이면 아래 보정 미리보기에서 카메라를 한 번 켜서 권한을 허용한 뒤 다시 찾으세요.</p>
+      </div>
+
+      <div class="card">
+        <h3>보정과 색감</h3>
+        <div class="lookprev" id="lookPrevBox">
+          <video id="pvVideo" playsinline muted autoplay></video>
+          <div class="lay soft" id="pvSoft"></div>
+          <div class="lay" id="pvTint"></div>
+          <div class="lay fade" id="pvFade"></div>
+          <div class="lay" id="pvVign"></div>
+          <p class="pvOff" id="pvOff">카메라로 보면서 맞출 수 있습니다</p>
+        </div>
+        <div class="row">
+          <button class="btn sm" id="pvToggle">카메라 켜기</button>
+          <button class="btn sm ghost" id="fAdd">보정 추가</button>
+          <button class="btn sm ghost" id="fDup">복제</button>
+          <button class="btn sm danger" id="fDel">삭제</button>
+        </div>
+        <div class="layoutlist" id="filterList"></div>
+        <label class="lab">이름<input type="text" id="fName" maxlength="12"></label>
+        <label class="lab" style="flex-direction:row;align-items:center;gap:9px;text-transform:none;letter-spacing:0;font-size:14px;color:var(--fg)">
+          <input type="checkbox" id="fEnabled" style="width:auto"> 손님 화면에 보이기
+        </label>
+
+        <div class="sliders" id="fSliders"></div>
+
+        <h3 style="margin-top:4px">색감 덧씌우기</h3>
+        <div class="row" style="flex-wrap:nowrap">
+          <input type="color" id="fTintColor" aria-label="덧씌울 색">
+          <select id="fTintMode" aria-label="섞는 방식"></select>
+        </div>
+        <div class="sliders" id="fTintSlider"></div>
+        <p class="note">색을 고르고 세기를 올리면 그 색감이 사진 전체에 입혀집니다.
+        세기가 0이면 아무것도 입히지 않습니다.</p>
+
+        <button class="btn sm danger" id="fReset">보정만 기본값으로</button>
+      </div>
+
+      <div class="card">
+        <h3>인화 방식</h3>
+        <div class="layoutlist" id="admLayouts"></div>
+        <div class="row">
+          <button class="btn sm" id="admAdd">새로 만들기</button>
+          <button class="btn sm" id="admDup">복제</button>
+          <button class="btn sm danger" id="admDel">삭제</button>
+        </div>
+        <label class="lab">이름<input type="text" id="admName" maxlength="20"></label>
+        <label class="lab" style="flex-direction:row;align-items:center;gap:9px;text-transform:none;letter-spacing:0;font-size:14px;color:var(--fg)">
+          <input type="checkbox" id="admEnabled" style="width:auto"> 손님 화면에 보이기
+        </label>
+      </div>
+
+      <div class="card">
+        <h3>인화지 크기</h3>
+        <select id="admPreset">
+          <option value="1200x1800">4×6 세로 (1200 × 1800)</option>
+          <option value="1800x1200">4×6 가로 (1800 × 1200)</option>
+          <option value="1500x1500">정사각 5×5 (1500 × 1500)</option>
+          <option value="900x2700">긴 스트립 (900 × 2700)</option>
+          <option value="custom">직접 입력</option>
+        </select>
+        <div class="grid2">
+          <label class="lab">가로 px<input type="number" id="admW" min="200" max="6000" step="10"></label>
+          <label class="lab">세로 px<input type="number" id="admH" min="200" max="6000" step="10"></label>
+        </div>
+        <p class="note">300dpi 기준입니다. 1200 × 1800 이면 4 × 6 인치로 인쇄됩니다.</p>
+      </div>
+
+      <div class="card">
+        <h3>배경과 프레임</h3>
+        <div class="row">
+          <label class="btn sm filepick">배경 올리기<input type="file" id="admBg" accept="image/*"></label>
+          <button class="btn sm ghost" id="admBgDel">배경 지우기</button>
+        </div>
+        <div class="row">
+          <label class="btn sm filepick">프레임 올리기<input type="file" id="admFrame" accept="image/*"></label>
+          <button class="btn sm ghost" id="admFrameDel">프레임 지우기</button>
+        </div>
+        <p class="note"><b>배경</b>은 사진 아래에 깔립니다. <b>프레임</b>은 사진 위에 덮이므로
+        투명 PNG를 쓰세요. 둘 다 인화지 크기에 맞춰 늘어납니다.</p>
+      </div>
+
+      <div class="card">
+        <h3>사진 칸</h3>
+        <div class="row">
+          <button class="btn sm" id="slotAdd">칸 추가</button>
+          <button class="btn sm" id="slotDup">선택 칸 복제</button>
+          <button class="btn sm danger" id="slotDel">선택 칸 삭제</button>
+        </div>
+        <div class="row">
+          <button class="btn sm ghost" id="slotRowX">가로로 고르게</button>
+          <button class="btn sm ghost" id="slotRowY">세로로 고르게</button>
+          <button class="btn sm ghost" id="slotTwin">두 줄로 복제</button>
+        </div>
+        <div class="grid2" id="slotFields">
+          <label class="lab">X<input type="number" id="slotX" step="1"></label>
+          <label class="lab">Y<input type="number" id="slotY" step="1"></label>
+          <label class="lab">가로<input type="number" id="slotW" step="1" min="20"></label>
+          <label class="lab">세로<input type="number" id="slotH" step="1" min="20"></label>
+          <label class="lab">몇 번째 사진<input type="number" id="slotShot" step="1" min="1"></label>
+        </div>
+        <p class="note">같은 번호를 쓰면 같은 사진이 여러 칸에 들어갑니다. 두 줄로 나눠 갖는
+        인화지는 이렇게 만듭니다.</p>
+      </div>
+
+      <div class="card">
+        <h3>글자</h3>
+        <div id="textList" class="layoutlist"></div>
+        <div class="row">
+          <button class="btn sm" id="textAdd">글자 추가</button>
+          <button class="btn sm danger" id="textDel">선택 글자 삭제</button>
+        </div>
+        <label class="lab">내용<input type="text" id="textContent" maxlength="40"></label>
+        <p class="note">{brand} 는 손님이 정한 이름, {date} 는 촬영 날짜로 바뀝니다.</p>
+        <div class="grid3">
+          <label class="lab">X<input type="number" id="textX" step="1"></label>
+          <label class="lab">Y<input type="number" id="textY" step="1"></label>
+          <label class="lab">크기<input type="number" id="textSize" step="1" min="6"></label>
+        </div>
+        <div class="grid3">
+          <label class="lab">서체<select id="textFont"><option value="display">제목체</option><option value="body">본문체</option></select></label>
+          <label class="lab">정렬<select id="textAlign"><option value="center">가운데</option><option value="left">왼쪽</option><option value="right">오른쪽</option></select></label>
+          <label class="lab">색<input type="color" id="textColor"></label>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>절취선</h3>
+        <label class="lab" style="flex-direction:row;align-items:center;gap:9px;text-transform:none;letter-spacing:0;font-size:14px;color:var(--fg)">
+          <input type="checkbox" id="cutOn" style="width:auto"> 점선 넣기
+        </label>
+        <div class="grid2">
+          <label class="lab">세로선 X<input type="number" id="cutX" step="1"></label>
+          <label class="lab">색<input type="color" id="cutColor"></label>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>초기화</h3>
+        <button class="btn sm danger" id="admReset">기본 설정으로 되돌리기</button>
+        <p class="note">올린 배경과 프레임 이미지도 함께 지워집니다.</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<div id="msg" hidden role="status"></div>
+
+<div id="confirm" hidden>
+  <div class="cbox">
+    <p id="confirmText"></p>
+    <div class="row" style="justify-content:flex-end">
+      <button class="btn sm ghost" id="confirmNo">취소</button>
+      <button class="btn sm primary" id="confirmYes">확인</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ══════════════════════════════════════════
+   설정 — 모든 인화 디자인이 여기 한 덩어리에 들어 있고,
+   관리자 화면에서 고친 내용이 그대로 이 구조로 저장됩니다.
+   ══════════════════════════════════════════ */
+function defaultConfig(){
+  return {
+    version: 5,
+    brand: "STUDIO 042",
+    timer: 3,
+    filter: "bright",
+    cameraId: null,
+    filters: defaultFilters(),
+    layouts: [
+      {
+        id: "strip4", name: "가로 4컷", enabled: true,
+        canvas: { w:1800, h:1200 },
+        bg: null, frame: null,
+        slots: [
+          {x:75,  y:520, w:390, h:260, shot:0},
+          {x:495, y:520, w:390, h:260, shot:1},
+          {x:915, y:520, w:390, h:260, shot:2},
+          {x:1335,y:520, w:390, h:260, shot:3}
+        ],
+        texts: [
+          {content:"{brand}", x:900, y:400, size:76, font:"display", align:"center", color:"#111111"},
+          {content:"{date}",  x:900, y:452, size:24, font:"body",    align:"center", color:"#9A9A9A"},
+          {content:"SELF PHOTO BOOTH", x:900, y:845, size:22, font:"body", align:"center", color:"#BBBBBB"}
+        ],
+        cut: { on:false, x:900, color:"#D8D0CA" }
+      },
+      {
+        id: "twin4", name: "세로 4컷", enabled: true,
+        canvas: { w:1200, h:1800 },
+        bg: null, frame: null,
+        slots: [
+          {x:170, y:80,   w:260, h:390, shot:0},
+          {x:170, y:485,  w:260, h:390, shot:1},
+          {x:170, y:890,  w:260, h:390, shot:2},
+          {x:170, y:1295, w:260, h:390, shot:3},
+          {x:770, y:80,   w:260, h:390, shot:0},
+          {x:770, y:485,  w:260, h:390, shot:1},
+          {x:770, y:890,  w:260, h:390, shot:2},
+          {x:770, y:1295, w:260, h:390, shot:3}
+        ],
+        texts: [
+          {content:"{brand}", x:300, y:1715, size:36, font:"display", align:"center", color:"#111111"},
+          {content:"{date}",  x:300, y:1758, size:19, font:"body",    align:"center", color:"#9A9A9A"},
+          {content:"{brand}", x:900, y:1715, size:36, font:"display", align:"center", color:"#111111"},
+          {content:"{date}",  x:900, y:1758, size:19, font:"body",    align:"center", color:"#9A9A9A"}
+        ],
+        cut: { on:true, x:600, color:"#D8D0CA" }
+      }
+    ]
+  };
+}
+
+/* 보정 한 가지는 숫자 묶음입니다. 같은 숫자로 미리보기(CSS)와
+   인화(캔버스)를 똑같이 그리기 때문에 화면에 보이는 게 그대로 나옵니다.
+   smooth = 피부 보정, tint = 색감 덧씌우기, fade = 먹색 띄우기 */
+function newFilter(over){
+  var f = {
+    id:"F"+Date.now(), name:"새 보정", enabled:true,
+    brightness:100, contrast:100, saturate:100, sepia:0, hue:0,
+    smooth:0, fade:0, vignette:0,
+    tint:{ color:"#FFB07A", mode:"soft-light", amount:0 }
+  };
+  for (var k in (over||{})) f[k]=over[k];
+  return f;
+}
+function defaultFilters(){
+  return [
+    newFilter({id:"none",   name:"원본"}),
+    newFilter({id:"bright", name:"화사하게", brightness:105, contrast:101, saturate:108, smooth:32}),
+    newFilter({id:"soft",   name:"뽀샤시",   brightness:108, contrast:97,  saturate:104, smooth:52, fade:14,
+                            tint:{color:"#FFD9C2", mode:"soft-light", amount:18}}),
+    newFilter({id:"mono",   name:"흑백",     saturate:0, contrast:110, smooth:30}),
+    newFilter({id:"film",   name:"필름",     brightness:102, contrast:105, saturate:92, sepia:20,
+                            smooth:22, fade:16, vignette:22,
+                            tint:{color:"#FF9E5E", mode:"soft-light", amount:22}}),
+    newFilter({id:"cool",   name:"쿨톤",     brightness:103, contrast:102, saturate:96, smooth:38,
+                            tint:{color:"#8FB8E8", mode:"soft-light", amount:24}})
+  ];
+}
+var BLEND_MODES = [
+  {v:"soft-light", n:"은은하게"},
+  {v:"overlay",    n:"또렷하게"},
+  {v:"multiply",   n:"곱하기"},
+  {v:"screen",     n:"밝히기"},
+  {v:"color",      n:"색만 입히기"},
+  {v:"hard-light", n:"세게"}
+];
+var TIMERS = [3,5,10];
+
+/* 예전에 저장해둔 설정을 새 기본값에 맞춰 올려줍니다.
+   손대지 않은 기본 레이아웃만 바꾸고, 직접 편집했거나 이미지를 올린 것은 그대로 둡니다. */
+function migrate(cfg){
+  if (!cfg || cfg.version >= 5) return cfg;
+
+  // 예전 보정은 이름만 있었습니다. 같은 이름의 새 보정으로 바꿔 끼웁니다.
+  if (!Array.isArray(cfg.filters) || !cfg.filters.length){
+    cfg.filters = defaultFilters();
+    var map = { none:"none", bright:"bright", mono:"mono", film:"film" };
+    cfg.filter = map[cfg.filter] || "bright";
+  }
+
+  if (cfg.version < 4) cfg.layouts.forEach(function(l){
+    // 잠깐 한 줄로 나갔던 세로 4컷을 두 줄로 되돌립니다.
+    var oneColumn = l.id === "twin4" && l.slots.length === 4 && !l.bg && !l.frame &&
+      l.slots.every(function(s){ return s.w === 260 && s.h === 390 && s.x === 470; });
+    if (!oneColumn) return;
+    var fresh = defaultConfig().layouts.filter(function(d){ return d.id === "twin4"; })[0];
+    l.slots = fresh.slots;
+    l.texts = fresh.texts;
+    l.cut   = fresh.cut;
+  });
+  cfg.version = 5;
+  return cfg;
+}
+
+var CFG = defaultConfig();
+var cur = 0;            // 손님이 고른 레이아웃 index
+var admIdx = 0;         // 관리자가 편집 중인 레이아웃 index
+var selSlot = -1, selText = -1;
+
+var S = { shots:[], cancelled:false, blob:null, stream:null, facing:"user", wakeLock:null };
+
+var $ = function(id){ return document.getElementById(id); };
+var setupEl=$("setup"), shootEl=$("shoot"), resultEl=$("result"), adminEl=$("admin");
+
+/* ── 저장소 (IndexedDB: 설정 + 이미지) ── */
+function idb(){
+  return new Promise(function(res,rej){
+    var r = indexedDB.open("booth", 1);
+    r.onupgradeneeded = function(){ r.result.createObjectStore("kv"); };
+    r.onsuccess = function(){ res(r.result); };
+    r.onerror  = function(){ rej(r.error); };
+  });
+}
+function kv(mode, fn){
+  return idb().then(function(db){
+    return new Promise(function(res,rej){
+      var store = db.transaction("kv", mode).objectStore("kv");
+      var req = fn(store);
+      req.onsuccess = function(){ res(req.result); };
+      req.onerror  = function(){ rej(req.error); };
+    });
+  });
+}
+var kvGet = function(k){ return kv("readonly",  function(s){ return s.get(k); }); };
+var kvSet = function(k,v){ return kv("readwrite", function(s){ return s.put(v,k); }); };
+var kvDel = function(k){ return kv("readwrite", function(s){ return s.delete(k); }); };
+
+function saveConfig(){ return kvSet("config", JSON.parse(JSON.stringify(CFG))).catch(function(){}); }
+
+/* 이미지 캐시: key -> {blob, url, img} */
+var imgCache = {};
+function putImage(blob){
+  var key = "img_" + Date.now() + "_" + Math.random().toString(36).slice(2,8);
+  return kvSet(key, blob).then(function(){ return key; });
+}
+function getImage(key){
+  if (!key) return Promise.resolve(null);
+  if (imgCache[key]) return Promise.resolve(imgCache[key]);
+  return kvGet(key).then(function(blob){
+    if (!blob) return null;
+    return new Promise(function(res){
+      var url = URL.createObjectURL(blob);
+      var im = new Image();
+      im.onload = function(){ imgCache[key] = {url:url, img:im}; res(imgCache[key]); };
+      im.onerror = function(){ res(null); };
+      im.src = url;
+    });
+  });
+}
+
+/* ── 알림 / 확인 ──────────────────────── */
+var msgT;
+function say(t, ms){
+  var el=$("msg"); el.textContent=t; el.hidden=false;
+  clearTimeout(msgT);
+  if (ms!==0) msgT=setTimeout(function(){ el.hidden=true; }, ms||3400);
+}
+function hush(){ clearTimeout(msgT); $("msg").hidden=true; }
+
+var confirmCb=null;
+function ask(text, cb){ $("confirmText").textContent=text; confirmCb=cb; $("confirm").hidden=false; }
+$("confirmNo").addEventListener("click", function(){ $("confirm").hidden=true; confirmCb=null; });
+$("confirmYes").addEventListener("click", function(){
+  $("confirm").hidden=true;
+  var cb=confirmCb; confirmCb=null; if (cb) cb();
+});
+
+function show(el){ [setupEl,shootEl,resultEl,adminEl].forEach(function(s){ s.hidden = s!==el; }); }
+
+function today(){
+  var d=new Date(), p=function(n){ return String(n).padStart(2,"0"); };
+  return d.getFullYear()+"."+p(d.getMonth()+1)+"."+p(d.getDate());
+}
+function enabledLayouts(){ return CFG.layouts.filter(function(l){ return l.enabled; }); }
+function shotCount(L){
+  var m=0; L.slots.forEach(function(s){ if (s.shot+1>m) m=s.shot+1; });
+  return Math.max(1,m);
+}
+function fontOf(t){
+  return (t.font==="display")
+    ? t.size+"px Anton, sans-serif"
+    : "500 "+t.size+"px 'IBM Plex Sans KR', sans-serif";
+}
+function resolveText(s){
+  return String(s).replace(/\{brand\}/g, CFG.brand).replace(/\{date\}/g, today());
+}
+
+/* ══════════════════════════════════════════
+   손님 화면
+   ══════════════════════════════════════════ */
+function miniHtml(L){
+  var scale = 92 / Math.max(L.canvas.w, L.canvas.h);
+  var w = Math.round(L.canvas.w*scale), h = Math.round(L.canvas.h*scale);
+  var html = '<span class="mini" style="width:'+w+'px;height:'+h+'px">';
+  L.slots.slice(0,16).forEach(function(s){
+    html += '<i style="left:'+(s.x/L.canvas.w*100)+'%;top:'+(s.y/L.canvas.h*100)+'%;'+
+            'width:'+(s.w/L.canvas.w*100)+'%;height:'+(s.h/L.canvas.h*100)+'%"></i>';
+  });
+  return html+'</span>';
+}
+function buildModes(){
+  var list = enabledLayouts();
+  if (!list.length){ $("modes").innerHTML = '<p class="note">보이도록 켜둔 인화 방식이 없습니다. 관리자 화면에서 켜주세요.</p>'; return; }
+  if (cur >= list.length) cur = 0;
+  $("modes").innerHTML = list.map(function(L,i){
+    return '<button class="mode" data-i="'+i+'" aria-pressed="'+(i===cur)+'">'+
+      miniHtml(L)+
+      '<span style="min-width:0"><span class="mode-name">'+L.name+'</span><br>'+
+      '<span class="mode-sub">'+shotCount(L)+'컷 · '+L.canvas.w+'×'+L.canvas.h+'</span></span></button>';
+  }).join("");
+  updateShotNote();
+}
+function updateShotNote(){
+  var L = enabledLayouts()[cur];
+  $("shotNote").innerHTML = L
+    ? '<b>'+shotCount(L)+'컷</b>을 이어서 찍습니다. 중간에 멈추려면 그만두기를 누르세요.'
+    : '';
+}
+function buildChips(host, items, current, isTimer){
+  host.innerHTML = items.map(function(it){
+    var v = isTimer ? it : it.id, label = isTimer ? it+"초" : it.name;
+    return '<button class="chip" data-v="'+v+'" aria-pressed="'+(String(current)===String(v))+'">'+label+'</button>';
+  }).join("");
+}
+function pressOnly(host, value){
+  Array.prototype.forEach.call(host.children, function(b){
+    if (b.dataset.v!==undefined) b.setAttribute("aria-pressed", String(b.dataset.v===String(value)));
+  });
+}
+
+$("modes").addEventListener("click", function(e){
+  var b=e.target.closest(".mode"); if(!b) return;
+  cur = Number(b.dataset.i);
+  Array.prototype.forEach.call($("modes").children, function(x){
+    x.setAttribute("aria-pressed", String(Number(x.dataset.i)===cur));
+  });
+  updateShotNote();
+});
+$("filters").addEventListener("click", function(e){
+  var b=e.target.closest(".chip"); if(!b) return;
+  CFG.filter=b.dataset.v; pressOnly($("filters"), CFG.filter); saveConfig(); applyPreviewFilter();
+});
+$("timers").addEventListener("click", function(e){
+  var b=e.target.closest(".chip"); if(!b) return;
+  CFG.timer=Number(b.dataset.v); pressOnly($("timers"), CFG.timer); saveConfig();
+});
+$("brandEdit").addEventListener("input", function(e){
+  CFG.brand = e.target.value.trim() || "STUDIO 042"; saveConfig();
+});
+
+/* 이름 길게 누르면 관리자 */
+(function(){
+  var t=null;
+  var el=$("brandEdit");
+  var start=function(){ t=setTimeout(function(){ el.blur(); openAdmin(); }, 750); };
+  var stop =function(){ clearTimeout(t); };
+  ["pointerdown"].forEach(function(ev){ el.addEventListener(ev,start); });
+  ["pointerup","pointerleave","pointercancel"].forEach(function(ev){ el.addEventListener(ev,stop); });
+})();
+
+/* ══════════════════════════════════════════
+   보정 엔진 — 미리보기와 인화가 같은 숫자를 씁니다
+   ══════════════════════════════════════════ */
+function allFilters(){
+  return (CFG.filters && CFG.filters.length) ? CFG.filters : defaultFilters();
+}
+function shownFilters(){
+  var on = allFilters().filter(function(f){ return f.enabled; });
+  return on.length ? on : allFilters().slice(0,1);
+}
+function filterById(id){
+  var all=allFilters();
+  for (var i=0;i<all.length;i++) if (all[i].id===id) return all[i];
+  return shownFilters()[0] || newFilter({name:"원본"});
+}
+function activeFilter(){ return filterById(CFG.filter); }
+
+/* 색 보정만 모은 CSS 문자열. 캔버스 ctx.filter 도 같은 문법을 씁니다. */
+function colorCss(f){
+  var p=[];
+  if (f.brightness!==100) p.push("brightness("+(f.brightness/100)+")");
+  if (f.contrast  !==100) p.push("contrast("+(f.contrast/100)+")");
+  if (f.saturate  !==100) p.push("saturate("+(f.saturate/100)+")");
+  if (f.sepia)            p.push("sepia("+(f.sepia/100)+")");
+  if (f.hue)              p.push("hue-rotate("+f.hue+"deg)");
+  return p.length ? p.join(" ") : "none";
+}
+/* 피부 보정 세기 → 흐림 반지름과 섞는 정도.
+   반지름을 그림 너비에 비례시켜야 미리보기와 인화가 같아집니다. */
+function softBlur(f, px){ return Math.max(1, px*0.011*(f.smooth/100)); }
+function softAlpha(f){ return (f.smooth/100)*0.62; }
+function fadeAlpha(f){ return (f.fade/100)*0.35; }
+function vignAlpha(f){ return (f.vignette/100)*0.55; }
+
+/* 미리보기 층에 보정을 입힙니다. els = {base, soft, tint, fade, vign}
+   겹치는 순서: 색 보정 → 피부 보정 → 색감 → 먹색 → 비네팅.
+   인화 합성도 이 순서 그대로입니다. */
+function paintLook(els, f, px){
+  if (els.base) els.base.style.filter = colorCss(f);
+  if (els.soft){
+    var on = f.smooth>0;
+    els.soft.style.webkitBackdropFilter = on ? "blur("+softBlur(f,px)+"px)" : "none";
+    els.soft.style.backdropFilter        = on ? "blur("+softBlur(f,px)+"px)" : "none";
+    els.soft.style.opacity = on ? softAlpha(f) : 0;
+  }
+  if (els.tint){
+    els.tint.style.background      = f.tint.color;
+    els.tint.style.mixBlendMode    = f.tint.mode;
+    els.tint.style.opacity         = (f.tint.amount||0)/100;
+  }
+  if (els.fade){
+    els.fade.style.opacity = fadeAlpha(f);
+  }
+  if (els.vign){
+    els.vign.style.opacity = 1;
+    els.vign.style.background = f.vignette
+      ? "radial-gradient(ellipse at center, rgba(0,0,0,0) 38%, rgba(0,0,0,"+vignAlpha(f)+") 100%)"
+      : "none";
+  }
+}
+function applyPreviewFilter(){
+  var st=$("stage");
+  paintLook({base:$("video"), soft:$("softLayer"), tint:$("tintLayer"),
+             fade:$("fadeLayer"), vign:$("vignLayer")},
+            activeFilter(), st ? (st.clientWidth||480) : 480);
+}
+
+/* 캔버스에 같은 보정을 입힙니다.
+   iOS 17 아래 사파리는 ctx.filter 를 무시하므로 색은 직접 계산합니다. */
+var _ctxFilterOK = null;
+function ctxFilterWorks(){
+  if (_ctxFilterOK!==null) return _ctxFilterOK;
+  try{
+    var c=document.createElement("canvas"); c.width=c.height=1;
+    var x=c.getContext("2d");
+    if (!("filter" in x)) return (_ctxFilterOK=false);
+    x.filter="brightness(0)"; x.fillStyle="#ffffff"; x.fillRect(0,0,1,1);
+    _ctxFilterOK = x.getImageData(0,0,1,1).data[0] < 12;
+  } catch(e){ _ctxFilterOK=false; }
+  return _ctxFilterOK;
+}
+/* CSS 필터와 같은 순서로 색 행렬을 쌓습니다 (ctx.filter 가 없을 때만 씁니다) */
+function colorMatrix(f){
+  var m=[1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,0];  // 3x3 + 오프셋 3
+  function mul(a){
+    var r=[0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0];
+    for (var i=0;i<3;i++){
+      for (var j=0;j<3;j++){
+        r[i*4+j] = a[i*4]*m[j] + a[i*4+1]*m[4+j] + a[i*4+2]*m[8+j];
+      }
+      r[i*4+3] = a[i*4]*m[3] + a[i*4+1]*m[7] + a[i*4+2]*m[11] + a[i*4+3];
+    }
+    m=r;
+  }
+  var b=f.brightness/100, c=f.contrast/100, s=f.saturate/100, se=f.sepia/100;
+  if (b!==1) mul([b,0,0,0, 0,b,0,0, 0,0,b,0]);
+  if (c!==1){ var o=(0.5-0.5*c)*255; mul([c,0,0,o, 0,c,0,o, 0,0,c,o]); }
+  if (s!==1){
+    var R=0.213,G=0.715,B=0.072;
+    mul([R+(1-R)*s, G-G*s, B-B*s, 0,
+         R-R*s, G+(1-G)*s, B-B*s, 0,
+         R-R*s, G-G*s, B+(1-B)*s, 0]);
+  }
+  if (se) mul([0.393+0.607*(1-se), 0.769-0.769*(1-se), 0.189-0.189*(1-se), 0,
+               0.349-0.349*(1-se), 0.686+0.314*(1-se), 0.168-0.168*(1-se), 0,
+               0.272-0.272*(1-se), 0.534-0.534*(1-se), 0.131+0.869*(1-se), 0]);
+  if (f.hue){
+    var a=f.hue*Math.PI/180, cs=Math.cos(a), sn=Math.sin(a);
+    mul([0.213+cs*0.787-sn*0.213, 0.715-cs*0.715-sn*0.715, 0.072-cs*0.072+sn*0.928, 0,
+         0.213-cs*0.213+sn*0.143, 0.715+cs*0.285+sn*0.140, 0.072-cs*0.072-sn*0.283, 0,
+         0.213-cs*0.213-sn*0.787, 0.715-cs*0.715+sn*0.715, 0.072+cs*0.928+sn*0.072, 0]);
+  }
+  return m;
+}
+function applyMatrix(ctx, w, h, f){
+  var m=colorMatrix(f);
+  var d=ctx.getImageData(0,0,w,h), p=d.data;
+  for (var i=0;i<p.length;i+=4){
+    var r=p[i], g=p[i+1], bl=p[i+2];
+    p[i]   = m[0]*r + m[1]*g + m[2]*bl + m[3];
+    p[i+1] = m[4]*r + m[5]*g + m[6]*bl + m[7];
+    p[i+2] = m[8]*r + m[9]*g + m[10]*bl + m[11];
+  }
+  ctx.putImageData(d,0,0);
+}
+function free(c){ if (c && c.width){ c.width=0; c.height=0; } }
+
+/* 피부 보정: 줄였다 늘리면 부드러운 흐림이 됩니다.
+   ctx.filter 가 없어도 동작하고 큰 그림에서도 빠릅니다. */
+function softenInto(dst, src, f){
+  var a = softAlpha(f);
+  if (a<=0) return;
+  // 줄이는 배율 = 미리보기에서 쓴 흐림 반지름. 그래야 화면과 인화가 같아집니다.
+  var div = Math.max(2, softBlur(f, src.width));
+  var sw = Math.max(2, Math.round(src.width/div)), sh = Math.max(2, Math.round(src.height/div));
+  var small = document.createElement("canvas");
+  small.width=sw; small.height=sh;
+  var sx = small.getContext("2d");
+  sx.imageSmoothingEnabled = true;
+  sx.drawImage(src, 0, 0, sw, sh);
+  var d = dst.getContext("2d");
+  d.save();
+  d.imageSmoothingEnabled = true;
+  d.globalAlpha = a;
+  d.drawImage(small, 0, 0, dst.width, dst.height);
+  d.restore();
+  free(small);
+}
+/* 색감 덧씌우기와 먹색 띄우기 — 미리보기의 겹침 순서와 같습니다 */
+function overlayInto(ctx, w, h, f){
+  if (f.tint && f.tint.amount>0){
+    ctx.save();
+    ctx.globalCompositeOperation = f.tint.mode;
+    ctx.globalAlpha = f.tint.amount/100;
+    ctx.fillStyle = f.tint.color;
+    ctx.fillRect(0,0,w,h);
+    ctx.restore();
+  }
+  if (f.fade>0){
+    ctx.save();
+    ctx.globalCompositeOperation = "screen";
+    ctx.globalAlpha = fadeAlpha(f);
+    ctx.fillStyle = "#FFFFFF";
+    ctx.fillRect(0,0,w,h);
+    ctx.restore();
+  }
+}
+function drawVignette(ctx, x, y, w, h, f){
+  if (!f.vignette) return;
+  var cx=x+w/2, cy=y+h/2;
+  var g=ctx.createRadialGradient(cx,cy,Math.min(w,h)*0.38, cx,cy,Math.max(w,h)*0.72);
+  g.addColorStop(0,"rgba(0,0,0,0)");
+  g.addColorStop(1,"rgba(0,0,0,"+vignAlpha(f)+")");
+  ctx.save(); ctx.fillStyle=g; ctx.fillRect(x,y,w,h); ctx.restore();
+}
+
+/* ── 카메라 ───────────────────────────── */
+function stopStream(){
+  if (S.stream){ S.stream.getTracks().forEach(function(t){ t.stop(); }); S.stream=null; }
+}
+/* 쓸 카메라를 고릅니다. 관리자가 정해둔 카메라가 없거나 빠졌으면
+   기본 카메라로 돌아갑니다. */
+function videoConstraint(){
+  var c = { width:{ideal:1920}, height:{ideal:1440} };
+  if (CFG.cameraId) c.deviceId = { exact: CFG.cameraId };
+  else c.facingMode = S.facing;
+  return c;
+}
+function mirrorFor(){
+  // 외장 카메라는 거울로 뒤집지 않습니다. 전면 카메라만 뒤집습니다.
+  return !CFG.cameraId && S.facing === "user";
+}
+function openCamera(){
+  stopStream();
+  var tryOpen = function(constraint){
+    return navigator.mediaDevices.getUserMedia({ video:constraint, audio:false });
+  };
+  return tryOpen(videoConstraint())
+    .catch(function(err){
+      if (!CFG.cameraId) throw err;
+      // 정해둔 카메라가 사라졌으면 기본 카메라로 한 번 더 시도합니다
+      CFG.cameraId = null; saveConfig();
+      say("정해둔 카메라를 찾지 못해 기본 카메라로 엽니다.", 5000);
+      return tryOpen({ facingMode:S.facing, width:{ideal:1920}, height:{ideal:1440} });
+    })
+    .then(function(st){
+      S.stream=st;
+      var v=$("video"); v.srcObject=st;
+      v.style.transform = mirrorFor() ? "scaleX(-1)" : "none";
+      return v.play().catch(function(){});
+    });
+}
+function cameraError(err){
+  var n = err && err.name ? err.name : "";
+  if (n==="NotAllowedError") return "카메라 권한이 꺼져 있습니다. 설정 → Safari → 카메라에서 허용으로 바꾼 뒤 다시 열어주세요.";
+  if (n==="NotFoundError" || n==="OverconstrainedError") return "쓸 수 있는 카메라를 찾지 못했습니다.";
+  if (location.protocol!=="https:" && location.hostname!=="localhost")
+    return "카메라는 https 주소에서만 열립니다. 주소가 https로 시작하는지 확인해 주세요.";
+  return "카메라를 열지 못했습니다. 다른 앱이 카메라를 쓰고 있는지 확인해 주세요.";
+}
+function keepAwake(){
+  if (!("wakeLock" in navigator)) return;
+  navigator.wakeLock.request("screen").then(function(l){ S.wakeLock=l; }).catch(function(){});
+}
+function releaseAwake(){
+  if (S.wakeLock){ S.wakeLock.release().catch(function(){}); S.wakeLock=null; }
+}
+document.addEventListener("visibilitychange", function(){
+  if (document.visibilityState==="visible" && !shootEl.hidden) keepAwake();
+});
+
+/* ── 촬영 ─────────────────────────────── */
+function wait(ms){ return new Promise(function(r){ setTimeout(r,ms); }); }
+
+/* 카메라 화면을 통째로 한 장 담아둡니다. 칸마다 비율이 달라도
+   합성할 때 각 칸에 맞춰 가운데를 잘라 쓰면 되기 때문입니다. */
+function grabFull(){
+  var v=$("video"), vw=v.videoWidth, vh=v.videoHeight;
+  if (!vw||!vh) return null;
+  var f = activeFilter();
+  var scale = Math.min(1, 1600/Math.max(vw,vh));
+  var W=Math.round(vw*scale), H=Math.round(vh*scale);
+
+  // 1) 원본 (전면 카메라는 거울처럼 뒤집어 담습니다)
+  var out=document.createElement("canvas");
+  out.width=W; out.height=H;
+  var ox=out.getContext("2d");
+  ox.save();
+  if (mirrorFor()){ ox.translate(W,0); ox.scale(-1,1); }
+
+  // 2) 색 보정 — 미리보기는 video 에 CSS filter 를 걸고, 여기서는 같은 문자열을 씁니다
+  if (ctxFilterWorks()){
+    ox.filter = colorCss(f);
+    ox.drawImage(v,0,0,W,H);
+    ox.filter = "none";
+    ox.restore();
+  } else {
+    ox.drawImage(v,0,0,W,H);
+    ox.restore();
+    applyMatrix(ox, W, H, f);
+  }
+
+  // 3) 피부 보정 → 4) 색감 덧씌우기 → 먹색 띄우기
+  softenInto(out, out, f);
+  overlayInto(ox, W, H, f);
+  return out;
+}
+/* 다 쓴 캔버스는 바로 비웁니다. iOS Safari는 페이지 전체의 캔버스 메모리가
+   한도를 넘으면 오류 없이 잡티 섞인 그림을 돌려줍니다. */
+var lastResultUrl = null;
+function setResult(blob){
+  S.blob = blob;
+  if (lastResultUrl) URL.revokeObjectURL(lastResultUrl);
+  lastResultUrl = URL.createObjectURL(blob);
+  $("resultImg").src = lastResultUrl;
+}
+function freeCanvases(list){
+  (list||[]).forEach(function(c){ if (c && c.width){ c.width=0; c.height=0; } });
+}
+
+function ticks(done,total){
+  var h=""; for (var i=0;i<total;i++) h+='<span class="tick'+(i<done?" done":"")+'"></span>';
+  $("ticks").innerHTML=h;
+}
+function countdown(sec){
+  var n=sec;
+  $("count").hidden=false; $("countCue").textContent="준비";
+  return new Promise(function(resolve){
+    (function step(){
+      if (S.cancelled) return resolve();
+      $("countNum").textContent=n;
+      if (n<=1) $("countCue").textContent="찰칵";
+      if (n<=0){ $("count").hidden=true; return resolve(); }
+      n--; setTimeout(step,1000);
+    })();
+  });
+}
+function flash(){
+  var f=$("flash"); f.classList.add("on");
+  return wait(80).then(function(){ f.classList.remove("on"); });
+}
+function runSession(){
+  var L = enabledLayouts()[cur];
+  var total = shotCount(L);
+  S.shots=[]; S.cancelled=false; ticks(0,total);
+  function next(i){
+    if (S.cancelled || i>=total) return Promise.resolve();
+    return countdown(CFG.timer).then(function(){
+      if (S.cancelled) return;
+      var c=grabFull();
+      if (!c){ say("카메라 화면을 읽지 못했습니다."); S.cancelled=true; return; }
+      S.shots.push(c); ticks(S.shots.length,total);
+      return flash().then(function(){ return wait(700); }).then(function(){ return next(i+1); });
+    });
+  }
+  return next(0).then(function(){
+    if (S.cancelled || S.shots.length<total) return;
+    return renderPrint(L, S.shots).then(function(blob){
+      setResult(blob);
+      freeCanvases(S.shots); S.shots=[];
+      setPrintPage(L);
+      stopStream(); releaseAwake(); show(resultEl);
+    });
+  });
+}
+
+/* ══════════════════════════════════════════
+   합성 — 관리자 설정 그대로 그립니다
+   ══════════════════════════════════════════ */
+function drawCover(ctx, src, x, y, w, h){
+  var sw=src.width, sh=src.height;
+  var ar=w/h, cw=sh*ar, ch=sh;
+  if (cw>sw){ cw=sw; ch=sw/ar; }
+  ctx.drawImage(src,(sw-cw)/2,(sh-ch)/2,cw,ch,x,y,w,h);
+}
+function renderPrint(L, shots){
+  var c=document.createElement("canvas");
+  c.width=L.canvas.w; c.height=L.canvas.h;
+  var ctx=c.getContext("2d");
+  ctx.fillStyle="#FFFFFF"; ctx.fillRect(0,0,c.width,c.height);
+
+  return Promise.all([getImage(L.bg), getImage(L.frame),
+                      (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve()])
+    .then(function(r){
+      var bg=r[0], fr=r[1];
+      if (bg) ctx.drawImage(bg.img, 0,0, c.width, c.height);
+
+      var look = activeFilter();
+      L.slots.forEach(function(s){
+        var src = shots[s.shot % shots.length];
+        if (!src) return;
+        drawCover(ctx, src, s.x, s.y, s.w, s.h);
+        // 비네팅은 칸마다 겁니다. 촬영 화면에서 보이던 것과 같은 모양이 됩니다.
+        drawVignette(ctx, s.x, s.y, s.w, s.h, look);
+      });
+
+      if (L.cut && L.cut.on){
+        ctx.strokeStyle=L.cut.color; ctx.lineWidth=2; ctx.setLineDash([11,11]);
+        ctx.beginPath(); ctx.moveTo(L.cut.x,40); ctx.lineTo(L.cut.x, c.height-40); ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      L.texts.forEach(function(t){
+        ctx.fillStyle=t.color; ctx.font=fontOf(t); ctx.textAlign=t.align; ctx.textBaseline="alphabetic";
+        ctx.fillText(resolveText(t.content), t.x, t.y);
+      });
+
+      if (fr) ctx.drawImage(fr.img, 0,0, c.width, c.height);
+      return new Promise(function(res){ c.toBlob(res,"image/jpeg",0.95); });
+    });
+}
+function setPrintPage(L){
+  var el=$("pageSize"); if (!el) return;
+  var w=(L.canvas.w/300).toFixed(2), h=(L.canvas.h/300).toFixed(2);
+  el.textContent = "@page{ size:"+w+"in "+h+"in; margin:0 }";
+}
+
+/* ── 손님 버튼 ────────────────────────── */
+$("startBtn").addEventListener("click", function(){
+  hush();
+  var L = enabledLayouts()[cur];
+  if (!L){ say("관리자 화면에서 인화 방식을 하나 이상 켜주세요."); return; }
+  var s0 = L.slots[0] || {w:2,h:3};
+  $("stage").style.setProperty("--ar", s0.w+" / "+s0.h);
+  $("stage").style.setProperty("--ar-num", s0.w/s0.h);
+  show(shootEl); ticks(0, shotCount(L)); applyPreviewFilter(); keepAwake();
+  openCamera().then(function(){ return wait(900); }).then(runSession)
+    .catch(function(err){ say(cameraError(err),0); releaseAwake(); show(setupEl); });
+});
+$("cancelBtn").addEventListener("click", function(){
+  S.cancelled=true; $("count").hidden=true; stopStream(); releaseAwake(); show(setupEl);
+});
+$("flipBtn").addEventListener("click", function(){
+  S.facing = S.facing==="user" ? "environment" : "user";
+  openCamera().then(applyPreviewFilter).catch(function(e){ say(cameraError(e)); });
+});
+$("againBtn").addEventListener("click", function(){
+  S.blob=null; freeCanvases(S.shots); S.shots=[]; hush(); show(setupEl);
+});
+$("printBtn").addEventListener("click", function(){ window.print(); });
+$("saveBtn").addEventListener("click", function(){
+  if (!S.blob) return;
+  var name = CFG.brand.replace(/\s+/g,"_")+"_"+Date.now()+".jpg";
+  var file = new File([S.blob], name, {type:"image/jpeg"});
+  if (navigator.canShare && navigator.canShare({files:[file]})){
+    navigator.share({files:[file]}).catch(function(e){
+      if (e && e.name==="AbortError") return;
+      say("위 사진을 길게 눌러 ‘사진에 추가’를 고르면 저장됩니다.",6000);
+    });
+    return;
+  }
+  say("위 사진을 길게 눌러 ‘사진에 추가’를 고르면 저장됩니다.",6000);
+});
+
+/* ══════════════════════════════════════════
+   관리자 화면
+   ══════════════════════════════════════════ */
+function L(){ return CFG.layouts[admIdx]; }
+
+function openAdmin(){
+  if (!CFG.layouts.length) CFG.layouts = defaultConfig().layouts;
+  admIdx = Math.min(admIdx, CFG.layouts.length-1);
+  selSlot = L().slots.length ? 0 : -1;
+  selText = L().texts.length ? 0 : -1;
+  CFG.filters = allFilters();
+  var at = allFilters().map(function(f){ return f.id; }).indexOf(CFG.filter);
+  fIdx = at < 0 ? 0 : at;
+  show(adminEl);
+  renderAdmin();
+}
+$("admClose").addEventListener("click", function(){
+  pvStop();
+  saveConfig().then(function(){
+    buildModes();
+    buildChips($("filters"), shownFilters(), CFG.filter, false);
+    show(setupEl); say("설정을 저장했습니다.");
+  });
+});
+
+/* ── 카메라 고르기 ────────────────────── */
+function scanCameras(){
+  if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices){
+    $("camNote").textContent = "이 브라우저에서는 카메라 목록을 볼 수 없습니다.";
+    return Promise.resolve([]);
+  }
+  return navigator.mediaDevices.enumerateDevices().then(function(all){
+    var cams = all.filter(function(d){ return d.kind==="videoinput"; });
+    var named = cams.filter(function(d){ return d.label; }).length;
+    $("camPick").innerHTML = '<option value="">기본 카메라</option>' +
+      cams.map(function(d,i){
+        return '<option value="'+escapeHtml(d.deviceId)+'">'+
+               escapeHtml(d.label || ("카메라 "+(i+1)+" (이름 모름)"))+'</option>';
+      }).join("");
+    // 저장해둔 카메라가 아직 꽂혀 있으면 그대로 골라둡니다
+    var still = CFG.cameraId && cams.some(function(d){ return d.deviceId===CFG.cameraId; });
+    $("camPick").value = still ? CFG.cameraId : "";
+    if (CFG.cameraId && !still){
+      CFG.cameraId = null; saveConfig();
+      $("camNote").textContent = "정해둔 카메라가 지금은 없습니다. 기본 카메라로 돌려놨습니다.";
+    } else if (!cams.length){
+      $("camNote").textContent = "찾은 카메라가 없습니다.";
+    } else if (!named){
+      $("camNote").textContent = cams.length+"대를 찾았지만 이름을 모릅니다. 아래에서 카메라를 한 번 켜서 권한을 허용한 뒤 다시 찾으세요.";
+    } else {
+      $("camNote").textContent = cams.length+"대를 찾았습니다. 쓸 카메라를 고르세요.";
+    }
+    return cams;
+  }).catch(function(){ return []; });
+}
+$("camScan").addEventListener("click", function(){
+  scanCameras().then(function(){ say("카메라 목록을 다시 읽었습니다."); });
+});
+$("camPick").addEventListener("change", function(e){
+  CFG.cameraId = e.target.value || null;
+  saveConfig();
+  if (pvStream){ pvStop(); $("pvToggle").click(); }   // 미리보기를 새 카메라로 다시 엽니다
+  say(CFG.cameraId ? "이 카메라를 쓰도록 정했습니다." : "기본 카메라로 돌렸습니다.");
+});
+$("camFlip").addEventListener("click", function(){
+  S.facing = S.facing==="user" ? "environment" : "user";
+  CFG.cameraId = null; $("camPick").value=""; saveConfig();
+  if (pvStream){ pvStop(); $("pvToggle").click(); }
+  say(S.facing==="user" ? "앞 카메라로 바꿨습니다." : "뒤 카메라로 바꿨습니다.");
+});
+
+/* ── 보정 편집 ────────────────────────── */
+var fIdx = 0;
+var SLIDERS = [
+  {k:"brightness", n:"밝기",      min:50,  max:150, def:100},
+  {k:"contrast",   n:"대비",      min:50,  max:150, def:100},
+  {k:"saturate",   n:"채도",      min:0,   max:200, def:100},
+  {k:"smooth",     n:"피부 보정", min:0,   max:100, def:0},
+  {k:"fade",       n:"먹색 띄우기",min:0,  max:100, def:0},
+  {k:"vignette",   n:"비네팅",    min:0,   max:100, def:0},
+  {k:"sepia",      n:"세피아",    min:0,   max:100, def:0},
+  {k:"hue",        n:"색상 돌리기",min:-45,max:45,  def:0}
+];
+function F(){
+  var all=allFilters();
+  if (fIdx>=all.length) fIdx=0;
+  return all[fIdx];
+}
+function buildSliders(){
+  $("fSliders").innerHTML = SLIDERS.map(function(s){
+    return '<div class="sl"><label for="sl_'+s.k+'">'+s.n+'</label>'+
+      '<input type="range" id="sl_'+s.k+'" min="'+s.min+'" max="'+s.max+'" step="1">'+
+      '<output id="out_'+s.k+'"></output></div>';
+  }).join("");
+  $("fTintSlider").innerHTML =
+    '<div class="sl"><label for="sl_tint">세기</label>'+
+    '<input type="range" id="sl_tint" min="0" max="100" step="1">'+
+    '<output id="out_tint"></output></div>';
+  $("fTintMode").innerHTML = BLEND_MODES.map(function(m){
+    return '<option value="'+m.v+'">'+m.n+'</option>';
+  }).join("");
+
+  SLIDERS.forEach(function(s){
+    $("sl_"+s.k).addEventListener("input", function(e){
+      F()[s.k] = Number(e.target.value);
+      $("out_"+s.k).textContent = e.target.value;
+      paintAdminLook(); applyPreviewFilter();
+    });
+    $("sl_"+s.k).addEventListener("change", saveConfig);
+  });
+  $("sl_tint").addEventListener("input", function(e){
+    F().tint.amount = Number(e.target.value);
+    $("out_tint").textContent = e.target.value;
+    paintAdminLook(); applyPreviewFilter();
+  });
+  $("sl_tint").addEventListener("change", saveConfig);
+  $("fTintColor").addEventListener("input", function(e){
+    F().tint.color = e.target.value; paintAdminLook(); applyPreviewFilter();
+  });
+  $("fTintColor").addEventListener("change", saveConfig);
+  $("fTintMode").addEventListener("change", function(e){
+    F().tint.mode = e.target.value; paintAdminLook(); applyPreviewFilter(); saveConfig();
+  });
+}
+function renderFilterList(){
+  $("filterList").innerHTML = allFilters().map(function(f,i){
+    return '<button class="lrow" data-i="'+i+'" aria-pressed="'+(i===fIdx)+'">'+
+      '<span class="nm">'+f.name+'</span>'+
+      '<span class="off">'+(f.enabled?'':'숨김')+'</span></button>';
+  }).join("");
+}
+$("filterList").addEventListener("click", function(e){
+  var b=e.target.closest(".lrow"); if(!b) return;
+  fIdx=Number(b.dataset.i);
+  CFG.filter = F().id;          // 고른 보정을 바로 미리봅니다
+  renderFilterFields(); renderFilterList(); paintAdminLook();
+  buildChips($("filters"), shownFilters(), CFG.filter, false);
+  applyPreviewFilter(); saveConfig();
+});
+function renderFilterFields(){
+  var f=F();
+  $("fName").value=f.name;
+  $("fEnabled").checked=!!f.enabled;
+  SLIDERS.forEach(function(s){
+    var v = (f[s.k]===undefined) ? s.def : f[s.k];
+    $("sl_"+s.k).value=v; $("out_"+s.k).textContent=v;
+  });
+  if (!f.tint) f.tint={color:"#FFB07A",mode:"soft-light",amount:0};
+  $("fTintColor").value=f.tint.color;
+  $("fTintMode").value=f.tint.mode;
+  $("sl_tint").value=f.tint.amount; $("out_tint").textContent=f.tint.amount;
+}
+$("fName").addEventListener("input", function(e){
+  F().name=e.target.value||"이름 없음"; renderFilterList(); saveConfig();
+  buildChips($("filters"), shownFilters(), CFG.filter, false);
+});
+$("fEnabled").addEventListener("change", function(e){
+  var on=e.target.checked;
+  if (!on && shownFilters().length<=1 && F().enabled){
+    e.target.checked=true; say("보정은 최소 하나는 보여야 합니다."); return;
+  }
+  F().enabled=on; renderFilterList(); saveConfig();
+  if (!on && CFG.filter===F().id) CFG.filter = shownFilters()[0].id;
+  buildChips($("filters"), shownFilters(), CFG.filter, false);
+});
+$("fAdd").addEventListener("click", function(){
+  CFG.filters = allFilters().concat([newFilter({name:"새 보정", brightness:105, smooth:30})]);
+  fIdx=CFG.filters.length-1; CFG.filter=F().id;
+  renderFilterList(); renderFilterFields(); paintAdminLook();
+  buildChips($("filters"), shownFilters(), CFG.filter, false); saveConfig();
+});
+$("fDup").addEventListener("click", function(){
+  var c=JSON.parse(JSON.stringify(F()));
+  c.id="F"+Date.now(); c.name=F().name+" 복사본";
+  CFG.filters = allFilters(); CFG.filters.splice(fIdx+1,0,c);
+  fIdx++; CFG.filter=F().id;
+  renderFilterList(); renderFilterFields(); paintAdminLook();
+  buildChips($("filters"), shownFilters(), CFG.filter, false); saveConfig();
+});
+$("fDel").addEventListener("click", function(){
+  if (allFilters().length<=1){ say("마지막 하나는 지울 수 없습니다."); return; }
+  var name=F().name;
+  ask("‘"+name+"’ 보정을 지울까요?", function(){
+    CFG.filters = allFilters(); CFG.filters.splice(fIdx,1);
+    fIdx=Math.max(0,fIdx-1); CFG.filter=shownFilters()[0].id;
+    renderFilterList(); renderFilterFields(); paintAdminLook();
+    buildChips($("filters"), shownFilters(), CFG.filter, false); saveConfig();
+  });
+});
+$("fReset").addEventListener("click", function(){
+  ask("보정 목록을 기본값으로 되돌릴까요? 인화 방식은 그대로 둡니다.", function(){
+    CFG.filters=defaultFilters(); fIdx=0; CFG.filter=CFG.filters[1].id;
+    renderFilterList(); renderFilterFields(); paintAdminLook();
+    buildChips($("filters"), shownFilters(), CFG.filter, false); saveConfig();
+    say("보정을 기본값으로 되돌렸습니다.");
+  });
+});
+
+function paintAdminLook(){
+  var box=$("lookPrevBox");
+  paintLook({base:$("pvVideo"), soft:$("pvSoft"), tint:$("pvTint"),
+             fade:$("pvFade"), vign:$("pvVign")},
+            F(), box ? (box.clientWidth||360) : 360);
+}
+
+/* 보정 미리보기용 카메라 */
+var pvStream=null;
+function pvStop(){
+  if (pvStream){ pvStream.getTracks().forEach(function(t){ t.stop(); }); pvStream=null; }
+  $("pvVideo").srcObject=null;
+  $("pvOff").hidden=false;
+  $("pvToggle").textContent="카메라 켜기";
+}
+$("pvToggle").addEventListener("click", function(){
+  if (pvStream){ pvStop(); return; }
+  var c = CFG.cameraId ? {deviceId:{exact:CFG.cameraId}} : {facingMode:S.facing};
+  c.width = {ideal:1280};
+  navigator.mediaDevices.getUserMedia({video:c,audio:false})
+    .then(function(st){
+      pvStream=st;
+      var v=$("pvVideo");
+      v.srcObject=st;
+      v.style.transform = mirrorFor() ? "scaleX(-1)" : "none";
+      $("pvOff").hidden=true;
+      $("pvToggle").textContent="카메라 끄기";
+      paintAdminLook();
+      return v.play().catch(function(){});
+    })
+    .catch(function(err){ say(cameraError(err),5000); });
+});
+
+function renderAdmin(){
+  scanCameras();
+  renderFilterList();
+  renderFilterFields();
+  paintAdminLook();
+  renderLayoutList();
+  renderLayoutFields();
+  renderTextList();
+  renderTextFields();
+  renderSlotFields();
+  renderEditor();
+}
+
+function renderLayoutList(){
+  $("admLayouts").innerHTML = CFG.layouts.map(function(l,i){
+    return '<button class="lrow" data-i="'+i+'" aria-pressed="'+(i===admIdx)+'">'+
+      '<span class="nm">'+l.name+'</span>'+
+      '<span class="off">'+shotCount(l)+'컷'+(l.enabled?'':' · 숨김')+'</span></button>';
+  }).join("");
+}
+$("admLayouts").addEventListener("click", function(e){
+  var b=e.target.closest(".lrow"); if(!b) return;
+  admIdx=Number(b.dataset.i);
+  selSlot = L().slots.length?0:-1; selText = L().texts.length?0:-1;
+  renderAdmin();
+});
+
+function renderLayoutFields(){
+  var l=L();
+  $("admName").value=l.name;
+  $("admEnabled").checked=!!l.enabled;
+  $("admW").value=l.canvas.w; $("admH").value=l.canvas.h;
+  var key=l.canvas.w+"x"+l.canvas.h;
+  var opt=Array.prototype.filter.call($("admPreset").options,function(o){return o.value===key;})[0];
+  $("admPreset").value = opt ? key : "custom";
+  $("cutOn").checked = !!(l.cut && l.cut.on);
+  $("cutX").value = l.cut ? l.cut.x : Math.round(l.canvas.w/2);
+  $("cutColor").value = l.cut ? l.cut.color : "#D8D0CA";
+  $("editNote").textContent = l.canvas.w+" × "+l.canvas.h+" px · 300dpi 기준 "+
+    (l.canvas.w/300).toFixed(1)+" × "+(l.canvas.h/300).toFixed(1)+" 인치 · 촬영 "+shotCount(l)+"컷";
+}
+$("admName").addEventListener("input", function(e){
+  L().name = e.target.value || "이름 없음"; renderLayoutList(); saveConfig();
+});
+$("admEnabled").addEventListener("change", function(e){
+  L().enabled = e.target.checked; renderLayoutList(); saveConfig();
+});
+$("admPreset").addEventListener("change", function(e){
+  if (e.target.value==="custom") return;
+  var p=e.target.value.split("x");
+  L().canvas.w=Number(p[0]); L().canvas.h=Number(p[1]);
+  renderLayoutFields(); renderEditor(); saveConfig();
+});
+["admW","admH"].forEach(function(id){
+  $(id).addEventListener("change", function(){
+    var w=Number($("admW").value)||1200, h=Number($("admH").value)||1800;
+    L().canvas.w=Math.max(200,Math.min(6000,w));
+    L().canvas.h=Math.max(200,Math.min(6000,h));
+    renderLayoutFields(); renderEditor(); saveConfig();
+  });
+});
+["cutOn","cutX","cutColor"].forEach(function(id){
+  $(id).addEventListener("change", function(){
+    var l=L();
+    if (!l.cut) l.cut={on:false,x:Math.round(l.canvas.w/2),color:"#D8D0CA"};
+    l.cut.on = $("cutOn").checked;
+    l.cut.x = Number($("cutX").value)||Math.round(l.canvas.w/2);
+    l.cut.color = $("cutColor").value;
+    renderEditor(); saveConfig();
+  });
+});
+
+/* 레이아웃 추가·복제·삭제 */
+$("admAdd").addEventListener("click", function(){
+  CFG.layouts.push({
+    id:"L"+Date.now(), name:"새 인화", enabled:true,
+    canvas:{w:1200,h:1800}, bg:null, frame:null,
+    slots:[{x:150,y:150,w:900,h:600,shot:0}],
+    texts:[{content:"{brand}",x:600,y:1700,size:48,font:"display",align:"center",color:"#111111"}],
+    cut:{on:false,x:600,color:"#D8D0CA"}
+  });
+  admIdx=CFG.layouts.length-1; selSlot=0; selText=0; renderAdmin(); saveConfig();
+});
+$("admDup").addEventListener("click", function(){
+  var copy=JSON.parse(JSON.stringify(L()));
+  copy.id="L"+Date.now(); copy.name=L().name+" 복사본";
+  CFG.layouts.splice(admIdx+1,0,copy); admIdx++; renderAdmin(); saveConfig();
+});
+$("admDel").addEventListener("click", function(){
+  if (CFG.layouts.length<=1){ say("마지막 하나는 지울 수 없습니다."); return; }
+  ask("‘"+L().name+"’ 인화 방식을 지울까요?", function(){
+    CFG.layouts.splice(admIdx,1);
+    admIdx=Math.max(0,admIdx-1); selSlot=0; selText=0; renderAdmin(); saveConfig();
+    buildModes();
+  });
+});
+
+/* 배경 / 프레임 이미지 */
+/* 올린 이미지를 인화지 크기로 줄여서 저장합니다.
+   카메라 원본처럼 큰 사진을 그대로 들고 있으면 합성할 때 캔버스 메모리가
+   터지면서 결과가 잡티로 나옵니다. 어차피 인화지 크기로 늘여 쓰므로
+   원본 해상도를 보관할 이유가 없습니다. */
+function fitImage(file, w, h, keepAlpha){
+  return new Promise(function(res, rej){
+    var url = URL.createObjectURL(file);
+    var im = new Image();
+    im.onload = function(){
+      var c = document.createElement("canvas");
+      c.width = w; c.height = h;
+      var x = c.getContext("2d");
+      if (!keepAlpha){ x.fillStyle = "#FFFFFF"; x.fillRect(0,0,w,h); }
+      x.drawImage(im, 0, 0, w, h);
+      URL.revokeObjectURL(url);
+      c.toBlob(function(b){
+        c.width = c.height = 0;
+        b ? res(b) : rej(new Error("encode"));
+      }, keepAlpha ? "image/png" : "image/jpeg", 0.92);
+    };
+    im.onerror = function(){ URL.revokeObjectURL(url); rej(new Error("decode")); };
+    im.src = url;
+  });
+}
+
+function handleImage(input, which){
+  var f = input.files && input.files[0]; if (!f) return;
+  if (!/^image\//.test(f.type)){ say("이미지 파일만 올릴 수 있습니다."); input.value=""; return; }
+  var l = L();
+  say("이미지를 인화지 크기로 맞추는 중…", 0);
+  fitImage(f, l.canvas.w, l.canvas.h, which === "frame")
+    .then(putImage)
+    .then(function(key){
+      var old = l[which];
+      l[which] = key;
+      if (old){ kvDel(old); delete imgCache[old]; }
+      return saveConfig();
+    })
+    .then(function(){
+      renderEditor();
+      say(which==="bg" ? "배경을 올렸습니다." : "프레임을 올렸습니다.");
+    })
+    .catch(function(){
+      say("이미지를 읽지 못했습니다. PNG나 JPG로 저장해서 다시 올려주세요.", 5000);
+    })
+    .then(function(){ input.value=""; });
+}
+$("admBg").addEventListener("change", function(){ handleImage(this,"bg"); });
+$("admFrame").addEventListener("change", function(){ handleImage(this,"frame"); });
+$("admBgDel").addEventListener("click", function(){
+  var k=L().bg; if(!k){ say("올린 배경이 없습니다."); return; }
+  L().bg=null; kvDel(k); delete imgCache[k]; saveConfig(); renderEditor(); say("배경을 지웠습니다.");
+});
+$("admFrameDel").addEventListener("click", function(){
+  var k=L().frame; if(!k){ say("올린 프레임이 없습니다."); return; }
+  L().frame=null; kvDel(k); delete imgCache[k]; saveConfig(); renderEditor(); say("프레임을 지웠습니다.");
+});
+
+/* 사진 칸 */
+function renderSlotFields(){
+  var s = L().slots[selSlot];
+  var on = !!s;
+  ["slotX","slotY","slotW","slotH","slotShot"].forEach(function(id){ $(id).disabled=!on; });
+  if (!on) return;
+  $("slotX").value=s.x; $("slotY").value=s.y;
+  $("slotW").value=s.w; $("slotH").value=s.h; $("slotShot").value=s.shot+1;
+}
+["slotX","slotY","slotW","slotH","slotShot"].forEach(function(id){
+  $(id).addEventListener("change", function(){
+    var s=L().slots[selSlot]; if(!s) return;
+    s.x=Math.round(Number($("slotX").value)||0);
+    s.y=Math.round(Number($("slotY").value)||0);
+    s.w=Math.max(20,Math.round(Number($("slotW").value)||20));
+    s.h=Math.max(20,Math.round(Number($("slotH").value)||20));
+    s.shot=Math.max(0,(Number($("slotShot").value)||1)-1);
+    renderEditor(); renderLayoutFields(); renderLayoutList(); saveConfig();
+  });
+});
+$("slotAdd").addEventListener("click", function(){
+  var l=L();
+  l.slots.push({x:Math.round(l.canvas.w*0.1), y:Math.round(l.canvas.h*0.1),
+                w:Math.round(l.canvas.w*0.3), h:Math.round(l.canvas.h*0.2),
+                shot:shotCount(l)});
+  selSlot=l.slots.length-1; renderAdmin(); saveConfig();
+});
+$("slotDup").addEventListener("click", function(){
+  var s=L().slots[selSlot]; if(!s){ say("복제할 칸을 먼저 고르세요."); return; }
+  var c=JSON.parse(JSON.stringify(s)); c.x+=Math.round(s.w*0.3); c.y+=Math.round(s.h*0.3);
+  L().slots.push(c); selSlot=L().slots.length-1; renderAdmin(); saveConfig();
+});
+$("slotDel").addEventListener("click", function(){
+  if (L().slots.length<=1){ say("칸은 최소 하나 있어야 합니다."); return; }
+  if (selSlot<0) return;
+  L().slots.splice(selSlot,1); selSlot=Math.max(0,selSlot-1); renderAdmin(); saveConfig();
+});
+$("slotRowX").addEventListener("click", function(){
+  var l=L(), n=l.slots.length; if(n<2) return;
+  var m=Math.round(l.canvas.w*0.05), gap=Math.round(l.canvas.w*0.02);
+  var w=Math.floor((l.canvas.w-m*2-gap*(n-1))/n);
+  l.slots.forEach(function(s,i){ s.w=w; s.x=m+i*(w+gap); });
+  renderAdmin(); saveConfig();
+});
+$("slotRowY").addEventListener("click", function(){
+  var l=L(), n=l.slots.length; if(n<2) return;
+  var m=Math.round(l.canvas.h*0.04), gap=Math.round(l.canvas.h*0.012);
+  var h=Math.floor((l.canvas.h-m*2-gap*(n-1))/n);
+  l.slots.forEach(function(s,i){ s.h=h; s.y=m+i*(h+gap); });
+  renderAdmin(); saveConfig();
+});
+$("slotTwin").addEventListener("click", function(){
+  var l=L();
+  var half=l.canvas.w/2;
+  var base=l.slots.filter(function(s){ return s.x+s.w/2 < half; });
+  if (!base.length) base=l.slots.slice();
+  l.slots = base.concat(base.map(function(s){
+    var c=JSON.parse(JSON.stringify(s)); c.x=Math.round(s.x+half); return c;
+  }));
+  selSlot=0; renderAdmin(); saveConfig();
+  say("왼쪽 칸을 오른쪽에 같은 사진 번호로 복제했습니다.");
+});
+
+/* 글자 */
+function renderTextList(){
+  $("textList").innerHTML = L().texts.map(function(t,i){
+    return '<button class="txtrow" data-i="'+i+'" aria-pressed="'+(i===selText)+'">'+
+      '<span class="nm">'+(t.content||"(빈 글자)")+'</span></button>';
+  }).join("") || '<p class="note">글자가 없습니다.</p>';
+}
+$("textList").addEventListener("click", function(e){
+  var b=e.target.closest(".txtrow"); if(!b) return;
+  selText=Number(b.dataset.i); renderTextList(); renderTextFields(); renderEditor();
+});
+function renderTextFields(){
+  var t=L().texts[selText], on=!!t;
+  ["textContent","textX","textY","textSize","textFont","textAlign","textColor"].forEach(function(id){ $(id).disabled=!on; });
+  if (!on) return;
+  $("textContent").value=t.content; $("textX").value=t.x; $("textY").value=t.y;
+  $("textSize").value=t.size; $("textFont").value=t.font;
+  $("textAlign").value=t.align; $("textColor").value=t.color;
+}
+["textContent","textX","textY","textSize","textFont","textAlign","textColor"].forEach(function(id){
+  $(id).addEventListener("change", function(){
+    var t=L().texts[selText]; if(!t) return;
+    t.content=$("textContent").value;
+    t.x=Math.round(Number($("textX").value)||0);
+    t.y=Math.round(Number($("textY").value)||0);
+    t.size=Math.max(6,Math.round(Number($("textSize").value)||20));
+    t.font=$("textFont").value; t.align=$("textAlign").value; t.color=$("textColor").value;
+    renderTextList(); renderEditor(); saveConfig();
+  });
+});
+$("textAdd").addEventListener("click", function(){
+  var l=L();
+  l.texts.push({content:"{brand}", x:Math.round(l.canvas.w/2), y:Math.round(l.canvas.h*0.9),
+                size:40, font:"display", align:"center", color:"#111111"});
+  selText=l.texts.length-1; renderTextList(); renderTextFields(); renderEditor(); saveConfig();
+});
+$("textDel").addEventListener("click", function(){
+  if (selText<0) return;
+  L().texts.splice(selText,1); selText=Math.min(selText, L().texts.length-1);
+  renderTextList(); renderTextFields(); renderEditor(); saveConfig();
+});
+
+/* ── 편집 캔버스 ──────────────────────── */
+var EDIT_MAX = 460;
+function editScale(){
+  var l=L();
+  var box=$("editor").parentElement.clientWidth - 32;
+  var maxW=Math.min(box>120?box:EDIT_MAX, EDIT_MAX);
+  var maxH=Math.min(window.innerHeight*0.56, 620);
+  return Math.min(maxW/l.canvas.w, maxH/l.canvas.h);
+}
+function renderEditor(){
+  var l=L(), k=editScale();
+  var ed=$("editor");
+  ed.style.width = (l.canvas.w*k)+"px";
+  ed.style.height= (l.canvas.h*k)+"px";
+
+  var html="";
+  html += '<div class="layer" id="bgLayer"></div>';
+  l.slots.forEach(function(s,i){
+    html += '<div class="slot'+(i===selSlot?" sel":"")+'" data-i="'+i+'" style="'+
+      'left:'+(s.x*k)+'px;top:'+(s.y*k)+'px;width:'+(s.w*k)+'px;height:'+(s.h*k)+'px">'+
+      '<span>'+(s.shot+1)+'</span>'+(i===selSlot?'<div class="hd" data-h="1"></div>':'')+'</div>';
+  });
+  if (l.cut && l.cut.on){
+    html += '<div style="position:absolute;left:'+(l.cut.x*k)+'px;top:0;bottom:0;width:0;'+
+            'border-left:1px dashed '+l.cut.color+';pointer-events:none"></div>';
+  }
+  l.texts.forEach(function(t,i){
+    var left = t.x*k, align=t.align;
+    var tx = align==="center" ? "-50%" : (align==="right" ? "-100%" : "0%");
+    html += '<div class="txt'+(i===selText?" sel":"")+'" data-t="'+i+'" style="'+
+      'left:'+left+'px;top:'+(t.y*k)+'px;transform:translate('+tx+',-100%);'+
+      'font-size:'+Math.max(7,t.size*k)+'px;color:'+t.color+';'+
+      'font-family:'+(t.font==="display"?"var(--display)":"var(--body)")+'">'+
+      escapeHtml(resolveText(t.content))+'</div>';
+  });
+  html += '<div class="layer frameLayer" id="frLayer"></div>';
+  ed.innerHTML=html;
+
+  getImage(l.bg).then(function(b){
+    var el=$("bgLayer"); if (el) el.style.backgroundImage = b ? 'url('+b.url+')' : "none";
+  });
+  getImage(l.frame).then(function(f){
+    var el=$("frLayer"); if (el) el.style.backgroundImage = f ? 'url('+f.url+')' : "none";
+  });
+}
+function escapeHtml(s){
+  return String(s).replace(/[&<>"]/g, function(c){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];
+  });
+}
+
+/* 드래그: 칸 이동·크기, 글자 이동 */
+(function(){
+  var drag=null;
+  $("editor").addEventListener("pointerdown", function(e){
+    var handle=e.target.closest(".hd");
+    var slot=e.target.closest(".slot");
+    var text=e.target.closest(".txt");
+    var k=editScale();
+    if (handle && slot){
+      selSlot=Number(slot.dataset.i);
+      var s=L().slots[selSlot];
+      drag={type:"size", k:k, sx:e.clientX, sy:e.clientY, w0:s.w, h0:s.h};
+    } else if (slot){
+      selSlot=Number(slot.dataset.i);
+      var s2=L().slots[selSlot];
+      drag={type:"move", k:k, sx:e.clientX, sy:e.clientY, x0:s2.x, y0:s2.y};
+      renderSlotFields(); renderEditor();
+    } else if (text){
+      selText=Number(text.dataset.t);
+      var t=L().texts[selText];
+      drag={type:"text", k:k, sx:e.clientX, sy:e.clientY, x0:t.x, y0:t.y};
+      renderTextList(); renderTextFields(); renderEditor();
+    } else return;
+    if (drag.type!=="size"){ renderSlotFields(); }
+    $("editor").setPointerCapture(e.pointerId);
+    e.preventDefault();
+  });
+  $("editor").addEventListener("pointermove", function(e){
+    if (!drag) return;
+    var dx=(e.clientX-drag.sx)/drag.k, dy=(e.clientY-drag.sy)/drag.k;
+    var l=L();
+    if (drag.type==="move"){
+      var s=l.slots[selSlot];
+      s.x=Math.round(drag.x0+dx); s.y=Math.round(drag.y0+dy);
+    } else if (drag.type==="size"){
+      var s2=l.slots[selSlot];
+      s2.w=Math.max(20,Math.round(drag.w0+dx)); s2.h=Math.max(20,Math.round(drag.h0+dy));
+    } else {
+      var t=l.texts[selText];
+      t.x=Math.round(drag.x0+dx); t.y=Math.round(drag.y0+dy);
+    }
+    renderEditor();
+  });
+  function end(){
+    if (!drag) return;
+    drag=null; renderSlotFields(); renderTextFields(); saveConfig();
+  }
+  $("editor").addEventListener("pointerup", end);
+  $("editor").addEventListener("pointercancel", end);
+})();
+
+window.addEventListener("resize", function(){
+  if (!adminEl.hidden){ renderEditor(); paintAdminLook(); }
+  if (!shootEl.hidden) applyPreviewFilter();
+});
+
+/* 미리보기 — 더미 사진으로 실제 합성 결과를 봅니다 */
+$("admPreview").addEventListener("click", function(){
+  var l=L(), n=shotCount(l), shots=[];
+  for (var i=0;i<n;i++){
+    var c=document.createElement("canvas"); c.width=900; c.height=900;
+    var x=c.getContext("2d");
+    var tone=[ "#2A4060", "#4E586E", "#786060", "#96765F", "#5F7866", "#6B5F78" ][i%6];
+    x.fillStyle=tone; x.fillRect(0,0,900,900);
+    x.fillStyle="rgba(255,255,255,.85)"; x.textAlign="center"; x.textBaseline="middle";
+    x.font="140px Anton, sans-serif"; x.fillText(String(i+1),450,450);
+    shots.push(c);
+  }
+  renderPrint(l, shots).then(function(blob){
+    setResult(blob); freeCanvases(shots);
+    setPrintPage(l); show(resultEl);
+    say("미리보기입니다. 다시 찍기를 누르면 손님 화면으로 돌아갑니다.",5000);
+  });
+});
+
+/* 내보내기 / 가져오기 — 이미지까지 한 파일에 담습니다 */
+$("admExport").addEventListener("click", function(){
+  var out=JSON.parse(JSON.stringify(CFG));
+  var jobs=[];
+  CFG.layouts.forEach(function(l,i){
+    ["bg","frame"].forEach(function(w){
+      if (!l[w]) return;
+      jobs.push(kvGet(l[w]).then(function(blob){
+        if (!blob) return;
+        return new Promise(function(res){
+          var fr=new FileReader();
+          fr.onload=function(){ out.layouts[i][w+"Data"]=fr.result; res(); };
+          fr.onerror=function(){ res(); };
+          fr.readAsDataURL(blob);
+        });
+      }));
+    });
+  });
+  Promise.all(jobs).then(function(){
+    var blob=new Blob([JSON.stringify(out,null,2)],{type:"application/json"});
+    var file=new File([blob],"booth-settings.json",{type:"application/json"});
+    if (navigator.canShare && navigator.canShare({files:[file]})){
+      navigator.share({files:[file]}).catch(function(){});
+    } else {
+      var a=document.createElement("a");
+      a.href=URL.createObjectURL(blob); a.download="booth-settings.json"; a.click();
+    }
+  });
+});
+$("admImport").addEventListener("change", function(){
+  var f=this.files && this.files[0]; if(!f) return;
+  var input=this;
+  f.text().then(function(txt){
+    var data=JSON.parse(txt);
+    if (!data || !Array.isArray(data.layouts)) throw new Error("형식이 다릅니다");
+    ask("지금 설정을 지우고 이 파일 내용으로 바꿀까요?", function(){
+      var jobs=[];
+      data.layouts.forEach(function(l){
+        ["bg","frame"].forEach(function(w){
+          var d=l[w+"Data"];
+          delete l[w+"Data"];
+          l[w]=null;
+          if (!d) return;
+          jobs.push(fetch(d).then(function(r){ return r.blob(); })
+            .then(putImage).then(function(key){ l[w]=key; }).catch(function(){}));
+        });
+      });
+      Promise.all(jobs).then(function(){
+        CFG=data; if (!CFG.brand) CFG.brand="STUDIO 042";
+        admIdx=0; selSlot=0; selText=0;
+        return saveConfig();
+      }).then(function(){
+        $("brandEdit").value=CFG.brand;
+        buildChips($("filters"),shownFilters(),CFG.filter,false);
+        buildChips($("timers"),TIMERS,CFG.timer,true);
+        buildModes(); renderAdmin(); say("설정을 가져왔습니다.");
+      });
+    });
+  }).catch(function(){ say("읽을 수 없는 설정 파일입니다."); })
+    .then(function(){ input.value=""; });
+});
+
+$("admReset").addEventListener("click", function(){
+  ask("모든 인화 설정과 올린 이미지를 지우고 기본값으로 되돌릴까요?", function(){
+    var keys=[];
+    CFG.layouts.forEach(function(l){ if(l.bg) keys.push(l.bg); if(l.frame) keys.push(l.frame); });
+    Promise.all(keys.map(kvDel)).then(function(){
+      imgCache={}; CFG=defaultConfig(); admIdx=0; selSlot=0; selText=0;
+      return saveConfig();
+    }).then(function(){
+      $("brandEdit").value=CFG.brand;
+      buildChips($("filters"),shownFilters(),CFG.filter,false);
+      buildChips($("timers"),TIMERS,CFG.timer,true);
+      buildModes(); renderAdmin(); say("기본 설정으로 되돌렸습니다.");
+    });
+  });
+});
+
+/* ── 시작 ─────────────────────────────── */
+document.addEventListener("gesturestart", function(e){ e.preventDefault(); });
+
+kvGet("config").then(function(saved){
+  if (saved && Array.isArray(saved.layouts) && saved.layouts.length){
+    CFG = migrate(saved);
+    saveConfig();
+  }
+}).catch(function(){}).then(function(){
+  CFG.filters = allFilters();
+  if (!filterById(CFG.filter) || shownFilters().map(function(f){return f.id;}).indexOf(CFG.filter)<0)
+    CFG.filter = shownFilters()[0].id;
+  $("brandEdit").value = CFG.brand;
+  buildSliders();
+  buildChips($("filters"), shownFilters(), CFG.filter, false);
+  buildChips($("timers"), TIMERS, CFG.timer, true);
+  buildModes();
+  var L0 = enabledLayouts()[0];
+  if (L0) setPrintPage(L0);
+});
+
+if ("serviceWorker" in navigator){
+  window.addEventListener("load", function(){
+    navigator.serviceWorker.register("sw.js").catch(function(){});
+  });
+}
+})();
+</script>
+</body>
+</html>
