@@ -83,6 +83,16 @@ label.lab{display:flex;flex-direction:column;gap:5px;font-size:11px;letter-spaci
 .mode-sub{font-size:12px;color:var(--muted)}
 .mini{background:#fff;border-radius:2px;flex:none;position:relative;overflow:hidden}
 .mini i{position:absolute;background:#C9BDB4}
+.swatches{display:flex;flex-wrap:wrap;gap:9px}
+.sw{position:relative;width:58px;height:58px;border-radius:6px;overflow:hidden;
+  border:2px solid var(--line);background:#fff;background-size:cover;background-position:center;
+  flex:none;padding:0}
+.sw[aria-pressed=true]{border-color:var(--safelight)}
+.sw .nm{position:absolute;left:0;right:0;bottom:0;font-size:9px;line-height:1.5;
+  background:rgba(12,10,9,.72);color:var(--fg);text-align:center;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 2px}
+.sw.none{background:
+  repeating-linear-gradient(45deg,#fff 0 7px,#eceae8 7px 14px)}
 .chips{display:flex;flex-wrap:wrap;gap:8px}
 .chip{padding:10px 15px;border-radius:999px;font-size:14px;border:1px solid var(--line);
   background:var(--panel);color:var(--muted)}
@@ -183,6 +193,16 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;
 .txtrow{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--line);
   border-radius:4px;background:var(--panel2);font-size:13px;width:100%;text-align:left}
 .txtrow[aria-pressed=true]{border-color:var(--lamp)}
+.bgrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  padding:8px 0;border-bottom:1px solid var(--line)}
+.bgrow:last-child{border-bottom:0}
+.bgthumb{width:46px;height:34px;flex:none;border:1px solid var(--line);border-radius:4px;
+  background-size:cover;background-position:center;background-color:#fff;
+  font-size:9px;letter-spacing:.1em;color:var(--dim);
+  display:flex;align-items:center;justify-content:center}
+.bgthumb[data-slot=v]{width:34px;height:46px}
+.bgname{flex:1;min-width:92px;background:transparent;border:1px solid var(--line);
+  border-radius:4px;color:var(--fg);font:inherit;font-size:12px;padding:5px 7px}
 .filepick{position:relative;overflow:hidden}
 .filepick input[type=file]{position:absolute;inset:0;opacity:0;width:100%;height:100%}
 
@@ -225,6 +245,10 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;
   <div class="field">
     <p class="eyebrow">인화 방식</p>
     <div class="modes" id="modes" role="group" aria-label="인화 방식"></div>
+  </div>
+  <div class="field">
+    <p class="eyebrow">배경</p>
+    <div class="swatches" id="bgPick" role="group" aria-label="배경"></div>
   </div>
   <div class="field">
     <p class="eyebrow">보정</p>
@@ -380,17 +404,28 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;
       </div>
 
       <div class="card">
-        <h3>배경과 프레임</h3>
+        <h3>배경 목록</h3>
+        <p class="note">여기 올린 배경은 모든 인화 방식이 함께 씁니다.
+        손님이 <b>시작 화면</b>에서 직접 고릅니다.
+        배경 하나에 <b>가로</b>·<b>세로</b> 두 장을 올려두면 인화 방식 방향에 맞는 쪽을 알아서 씁니다.</p>
+        <div id="bgList"></div>
         <div class="row">
-          <label class="btn sm filepick">배경 올리기<input type="file" id="admBg" accept="image/*"></label>
-          <button class="btn sm ghost" id="admBgDel">배경 지우기</button>
+          <button class="btn sm" id="bgAdd">배경 추가</button>
         </div>
+      </div>
+
+      <div class="card">
+        <h3>프레임</h3>
         <div class="row">
           <label class="btn sm filepick">프레임 올리기<input type="file" id="admFrame" accept="image/*"></label>
           <button class="btn sm ghost" id="admFrameDel">프레임 지우기</button>
         </div>
-        <p class="note"><b>배경</b>은 사진 아래에 깔립니다. <b>프레임</b>은 사진 위에 덮이므로
-        투명 PNG를 쓰세요. 둘 다 인화지 크기에 맞춰 늘어납니다.</p>
+        <div class="row">
+          <label class="lab">지금 배경<select id="admBgSel"></select></label>
+        </div>
+        <p class="note"><b>프레임</b>은 사진 위에 덮이므로 투명 PNG를 쓰세요.
+        인화 방식마다 따로 올립니다. <b>지금 배경</b>은 손님 화면에서 고른 배경과 같은 값이라,
+        여기서 바꿔도 시작 화면에 바로 반영됩니다.</p>
       </div>
 
       <div class="card">
@@ -480,17 +515,19 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;
    ══════════════════════════════════════════ */
 function defaultConfig(){
   return {
-    version: 6,
+    version: 7,
     brand: "STUDIO 042",
     timer: 3,
     filter: "bright",
     cameraId: null,
     filters: defaultFilters(),
+    backgrounds: [],     // 배경 목록 {id,name,h,v}
+    bgId: null,          // 지금 고른 배경 (모든 인화 방식이 함께 씁니다)
     layouts: [
       {
         id: "strip4", name: "가로 4컷", enabled: true,
         canvas: { w:1800, h:1200 },
-        bg: null, frame: null,
+        frame: null,
         slots: [
           {x:75,  y:520, w:390, h:260, shot:0},
           {x:495, y:520, w:390, h:260, shot:1},
@@ -507,7 +544,7 @@ function defaultConfig(){
       {
         id: "twin4", name: "세로 4컷", enabled: true,
         canvas: { w:1200, h:1800 },
-        bg: null, frame: null,
+        frame: null,
         slots: [
           {x:170, y:80,   w:260, h:390, shot:0},
           {x:170, y:485,  w:260, h:390, shot:1},
@@ -570,7 +607,7 @@ var TIMERS = [3,5,10];
 /* 예전에 저장해둔 설정을 새 기본값에 맞춰 올려줍니다.
    손대지 않은 기본 레이아웃만 바꾸고, 직접 편집했거나 이미지를 올린 것은 그대로 둡니다. */
 function migrate(cfg){
-  if (!cfg || cfg.version >= 6) return cfg;
+  if (!cfg || cfg.version >= 7) return cfg;
 
   // 예전 보정은 이름만 있었습니다. 같은 이름의 새 보정으로 바꿔 끼웁니다.
   if (!Array.isArray(cfg.filters) || !cfg.filters.length){
@@ -591,7 +628,20 @@ function migrate(cfg){
   });
   // 예전 보정에는 디테일 문턱이 없었습니다. 기본값을 채워 넣습니다.
   (cfg.filters||[]).forEach(function(f){ if (f.detail===undefined) f.detail = 70; });
-  cfg.version = 6;
+  // 레이아웃마다 따로 올리던 배경을 공용 목록으로 옮깁니다
+  if (!Array.isArray(cfg.backgrounds)) cfg.backgrounds = [];
+  cfg.layouts.forEach(function(l, i){
+    delete l.bgId;
+    if (!l.bg) return;
+    var landscape = l.canvas.w > l.canvas.h;
+    var e = { id:"B"+Date.now()+i, name: l.name + " 배경", h:null, v:null };
+    e[landscape ? "h" : "v"] = l.bg;
+    cfg.backgrounds.push(e);
+    if (!cfg.bgId) cfg.bgId = e.id;
+    delete l.bg;
+  });
+  if (cfg.bgId === undefined) cfg.bgId = null;
+  cfg.version = 7;
   return cfg;
 }
 
@@ -675,6 +725,27 @@ function today(){
   return d.getFullYear()+"."+p(d.getMonth()+1)+"."+p(d.getDate());
 }
 function enabledLayouts(){ return CFG.layouts.filter(function(l){ return l.enabled; }); }
+
+/* ── 배경 목록 ─────────────────────────────
+   배경 하나가 가로(h)·세로(v) 두 장을 갖습니다.
+   인화 방식의 방향에 맞는 쪽을 골라 씁니다. */
+function allBackgrounds(){
+  if (!Array.isArray(CFG.backgrounds)) CFG.backgrounds = [];
+  return CFG.backgrounds;
+}
+function bgById(id){
+  var a = allBackgrounds();
+  for (var i=0;i<a.length;i++) if (a[i].id===id) return a[i];
+  return null;
+}
+/* 지금 고른 배경에서 이 인화 방식에 쓸 이미지 키를 찾습니다.
+   방향에 맞는 게 없으면 있는 쪽을 씁니다. */
+function bgKeyFor(L){
+  if (!L || !CFG.bgId) return null;
+  var e = bgById(CFG.bgId);
+  if (!e) return null;
+  return (L.canvas.w > L.canvas.h) ? (e.h || e.v) : (e.v || e.h);
+}
 function shotCount(L){
   var m=0; L.slots.forEach(function(s){ if (s.shot+1>m) m=s.shot+1; });
   return Math.max(1,m);
@@ -691,10 +762,10 @@ function resolveText(s){
 /* ══════════════════════════════════════════
    손님 화면
    ══════════════════════════════════════════ */
-function miniHtml(L){
+function miniHtml(L, idx){
   var scale = 92 / Math.max(L.canvas.w, L.canvas.h);
   var w = Math.round(L.canvas.w*scale), h = Math.round(L.canvas.h*scale);
-  var html = '<span class="mini" style="width:'+w+'px;height:'+h+'px">';
+  var html = '<span class="mini" data-mini="'+idx+'" style="width:'+w+'px;height:'+h+'px">';
   L.slots.slice(0,16).forEach(function(s){
     html += '<i style="left:'+(s.x/L.canvas.w*100)+'%;top:'+(s.y/L.canvas.h*100)+'%;'+
             'width:'+(s.w/L.canvas.w*100)+'%;height:'+(s.h/L.canvas.h*100)+'%"></i>';
@@ -707,12 +778,64 @@ function buildModes(){
   if (cur >= list.length) cur = 0;
   $("modes").innerHTML = list.map(function(L,i){
     return '<button class="mode" data-i="'+i+'" aria-pressed="'+(i===cur)+'">'+
-      miniHtml(L)+
+      miniHtml(L, i)+
       '<span style="min-width:0"><span class="mode-name">'+L.name+'</span><br>'+
       '<span class="mode-sub">'+shotCount(L)+'컷 · '+L.canvas.w+'×'+L.canvas.h+'</span></span></button>';
   }).join("");
+  paintMiniBackgrounds(list);
   updateShotNote();
 }
+
+/* 인화 방식 미리보기 네모에 고른 배경을 깔아줍니다 */
+function paintMiniBackgrounds(list){
+  list.forEach(function(L, i){
+    var el = document.querySelector('.mini[data-mini="'+i+'"]');
+    if (!el) return;
+    var key = bgKeyFor(L);
+    if (!key){ el.style.backgroundImage = "none"; return; }
+    getImage(key).then(function(b){
+      var e2 = document.querySelector('.mini[data-mini="'+i+'"]');
+      if (e2) e2.style.backgroundImage = b ? 'url('+b.url+')' : "none";
+    });
+  });
+}
+
+/* 시작 화면의 배경 고르기 줄 */
+function buildBgPick(){
+  var L = enabledLayouts()[cur];
+  var host = $("bgPick");
+  if (!L){ host.innerHTML = ""; return; }
+  var list = allBackgrounds();
+  var html = '<button class="sw none" data-b="" aria-pressed="'+(!CFG.bgId)+'">'+
+             '<span class="nm">없음</span></button>';
+  list.forEach(function(e){
+    html += '<button class="sw" data-b="'+e.id+'" aria-pressed="'+(CFG.bgId===e.id)+'">'+
+            '<span class="nm">'+escapeHtml(e.name)+'</span></button>';
+  });
+  if (!list.length){
+    html += '<p class="note" style="align-self:center">관리자 화면에서 배경을 올리면 여기에 나옵니다.</p>';
+  }
+  host.innerHTML = html;
+
+  // 섬네일 채우기 — 지금 인화 방식 방향에 맞는 쪽을 보여줍니다
+  var landscape = L.canvas.w > L.canvas.h;
+  list.forEach(function(e){
+    var key = landscape ? (e.h || e.v) : (e.v || e.h);
+    if (!key) return;
+    getImage(key).then(function(b){
+      var el = host.querySelector('.sw[data-b="'+e.id+'"]');
+      if (el && b) el.style.backgroundImage = 'url('+b.url+')';
+    });
+  });
+}
+
+$("bgPick").addEventListener("click", function(e){
+  var b = e.target.closest(".sw"); if (!b) return;
+  CFG.bgId = b.dataset.b || null;
+  saveConfig();
+  buildBgPick();
+  buildModes();          // 미리보기 네모를 새 배경으로 다시 그립니다
+});
 function updateShotNote(){
   var L = enabledLayouts()[cur];
   $("shotNote").innerHTML = L
@@ -737,6 +860,7 @@ $("modes").addEventListener("click", function(e){
   Array.prototype.forEach.call($("modes").children, function(x){
     x.setAttribute("aria-pressed", String(Number(x.dataset.i)===cur));
   });
+  buildBgPick();
   updateShotNote();
 });
 $("filters").addEventListener("click", function(e){
@@ -1143,7 +1267,7 @@ function renderPrint(L, shots){
   var ctx=c.getContext("2d");
   ctx.fillStyle="#FFFFFF"; ctx.fillRect(0,0,c.width,c.height);
 
-  return Promise.all([getImage(L.bg), getImage(L.frame),
+  return Promise.all([getImage(bgKeyFor(L)), getImage(L.frame),
                       (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve()])
     .then(function(r){
       var bg=r[0], fr=r[1];
@@ -1520,6 +1644,8 @@ function renderAdmin(){
   paintAdminLook();
   renderLayoutList();
   renderLayoutFields();
+  renderBgList();
+  renderBgSelect();
   renderTextList();
   renderTextFields();
   renderSlotFields();
@@ -1589,7 +1715,7 @@ $("admPreset").addEventListener("change", function(e){
 $("admAdd").addEventListener("click", function(){
   CFG.layouts.push({
     id:"L"+Date.now(), name:"새 인화", enabled:true,
-    canvas:{w:1200,h:1800}, bg:null, frame:null,
+    canvas:{w:1200,h:1800}, bgId:null, frame:null,
     slots:[{x:150,y:150,w:900,h:600,shot:0}],
     texts:[{content:"{brand}",x:600,y:1700,size:48,font:"display",align:"center",color:"#111111"}],
     cut:{on:false,x:600,color:"#D8D0CA"}
@@ -1636,12 +1762,13 @@ function fitImage(file, w, h, keepAlpha){
   });
 }
 
+/* 프레임은 인화 방식마다 다른 그림이라 레이아웃에 그대로 둡니다 */
 function handleImage(input, which){
   var f = input.files && input.files[0]; if (!f) return;
   if (!/^image\//.test(f.type)){ say("이미지 파일만 올릴 수 있습니다."); input.value=""; return; }
   var l = L();
   say("이미지를 인화지 크기로 맞추는 중…", 0);
-  fitImage(f, l.canvas.w, l.canvas.h, which === "frame")
+  fitImage(f, l.canvas.w, l.canvas.h, true)
     .then(putImage)
     .then(function(key){
       var old = l[which];
@@ -1649,24 +1776,131 @@ function handleImage(input, which){
       if (old){ kvDel(old); delete imgCache[old]; }
       return saveConfig();
     })
-    .then(function(){
-      renderEditor();
-      say(which==="bg" ? "배경을 올렸습니다." : "프레임을 올렸습니다.");
-    })
+    .then(function(){ renderEditor(); say("프레임을 올렸습니다."); })
     .catch(function(){
       say("이미지를 읽지 못했습니다. PNG나 JPG로 저장해서 다시 올려주세요.", 5000);
     })
     .then(function(){ input.value=""; });
 }
-$("admBg").addEventListener("change", function(){ handleImage(this,"bg"); });
 $("admFrame").addEventListener("change", function(){ handleImage(this,"frame"); });
-$("admBgDel").addEventListener("click", function(){
-  var k=L().bg; if(!k){ say("올린 배경이 없습니다."); return; }
-  L().bg=null; kvDel(k); delete imgCache[k]; saveConfig(); renderEditor(); say("배경을 지웠습니다.");
-});
 $("admFrameDel").addEventListener("click", function(){
   var k=L().frame; if(!k){ say("올린 프레임이 없습니다."); return; }
   L().frame=null; kvDel(k); delete imgCache[k]; saveConfig(); renderEditor(); say("프레임을 지웠습니다.");
+});
+
+/* ── 배경 목록 관리 ─────────────────────────
+   배경은 공용이라 어느 한 인화 방식에 매달지 않습니다.
+   가로 배경은 가장 큰 가로 인화지, 세로 배경은 가장 큰 세로 인화지에 맞춰
+   줄여서 저장합니다. 원본 그대로 두면 아이패드에서 합성 중에 메모리가 터집니다. */
+function bgTargetSize(which){
+  var w=0, h=0;
+  CFG.layouts.forEach(function(l){
+    var land = l.canvas.w > l.canvas.h;
+    if ((which==="h") === land && l.canvas.w*l.canvas.h > w*h){ w=l.canvas.w; h=l.canvas.h; }
+  });
+  if (!w) return which==="h" ? {w:1800,h:1200} : {w:1200,h:1800};
+  return {w:w, h:h};
+}
+
+function renderBgList(){
+  var host = $("bgList"), a = allBackgrounds();
+  if (!a.length){
+    host.innerHTML = '<p class="note">아직 올린 배경이 없습니다. 배경 추가를 눌러 시작하세요.</p>';
+    return;
+  }
+  host.innerHTML = a.map(function(e){
+    return '<div class="bgrow" data-id="'+e.id+'">'+
+      '<span class="bgthumb" data-slot="h"></span>'+
+      '<span class="bgthumb" data-slot="v"></span>'+
+      '<input class="bgname" type="text" maxlength="20" value="'+escapeHtml(e.name)+'">'+
+      '<label class="btn sm filepick">가로<input type="file" accept="image/*" data-up="h"></label>'+
+      '<label class="btn sm filepick">세로<input type="file" accept="image/*" data-up="v"></label>'+
+      '<button class="btn sm danger" data-del="1">삭제</button></div>';
+  }).join("");
+
+  a.forEach(function(e){
+    ["h","v"].forEach(function(k){
+      var el = host.querySelector('.bgrow[data-id="'+e.id+'"] .bgthumb[data-slot="'+k+'"]');
+      if (!el) return;
+      if (!e[k]){ el.textContent = "없음"; return; }
+      getImage(e[k]).then(function(b){ if (b) el.style.backgroundImage = 'url('+b.url+')'; });
+    });
+  });
+}
+
+function renderBgSelect(){
+  var sel = $("admBgSel");
+  var html = '<option value="">없음</option>';
+  allBackgrounds().forEach(function(e){
+    html += '<option value="'+e.id+'">'+escapeHtml(e.name)+'</option>';
+  });
+  sel.innerHTML = html;
+  sel.value = CFG.bgId || "";
+}
+$("admBgSel").addEventListener("change", function(){
+  CFG.bgId = this.value || null;
+  saveConfig(); renderEditor(); buildBgPick(); buildModes();
+});
+
+$("bgAdd").addEventListener("click", function(){
+  allBackgrounds().push({
+    id: "B"+Date.now()+Math.floor(Math.random()*1000),
+    name: "배경 "+(allBackgrounds().length+1), h:null, v:null
+  });
+  saveConfig(); renderBgList(); renderBgSelect(); buildBgPick();
+  say("배경을 하나 만들었습니다. 가로·세로 그림을 올려주세요.");
+});
+
+$("bgList").addEventListener("change", function(ev){
+  var row = ev.target.closest(".bgrow"); if (!row) return;
+  var e = bgById(row.dataset.id); if (!e) return;
+
+  if (ev.target.classList.contains("bgname")){
+    e.name = ev.target.value.trim() || "배경";
+    ev.target.value = e.name;
+    saveConfig(); renderBgSelect(); buildBgPick();
+    return;
+  }
+
+  var which = ev.target.dataset.up;
+  if (!which) return;
+  var input = ev.target;
+  var f = input.files && input.files[0]; if (!f) return;
+  if (!/^image\//.test(f.type)){ say("이미지 파일만 올릴 수 있습니다."); input.value=""; return; }
+  var t = bgTargetSize(which);
+  say("배경을 인화지 크기로 맞추는 중…", 0);
+  fitImage(f, t.w, t.h, false)
+    .then(putImage)
+    .then(function(key){
+      var old = e[which];
+      e[which] = key;
+      if (old){ kvDel(old); delete imgCache[old]; }
+      return saveConfig();
+    })
+    .then(function(){
+      renderBgList(); renderEditor(); buildBgPick(); buildModes();
+      say((which==="h"?"가로":"세로")+" 배경을 올렸습니다.");
+    })
+    .catch(function(){
+      say("이미지를 읽지 못했습니다. PNG나 JPG로 저장해서 다시 올려주세요.", 5000);
+    })
+    .then(function(){ input.value=""; });
+});
+
+$("bgList").addEventListener("click", function(ev){
+  var btn = ev.target.closest("[data-del]"); if (!btn) return;
+  var row = ev.target.closest(".bgrow"); if (!row) return;
+  var id = row.dataset.id, e = bgById(id); if (!e) return;
+  ask('배경 "'+e.name+'" 을 지울까요?', function(){
+    var keys = [e.h, e.v].filter(Boolean);
+    CFG.backgrounds = allBackgrounds().filter(function(x){ return x.id !== id; });
+    if (CFG.bgId === id) CFG.bgId = null;
+    keys.forEach(function(k){ kvDel(k); delete imgCache[k]; });
+    saveConfig().then(function(){
+      renderBgList(); renderBgSelect(); renderEditor(); buildBgPick(); buildModes();
+      say("배경을 지웠습니다.");
+    });
+  });
 });
 
 /* 사진 칸 */
@@ -1812,7 +2046,7 @@ function renderEditor(){
   html += '<div class="layer frameLayer" id="frLayer"></div>';
   ed.innerHTML=html;
 
-  getImage(l.bg).then(function(b){
+  getImage(bgKeyFor(l)).then(function(b){
     var el=$("bgLayer"); if (el) el.style.backgroundImage = b ? 'url('+b.url+')' : "none";
   });
   getImage(l.frame).then(function(f){
@@ -1904,19 +2138,22 @@ $("admPreview").addEventListener("click", function(){
 $("admExport").addEventListener("click", function(){
   var out=JSON.parse(JSON.stringify(CFG));
   var jobs=[];
-  CFG.layouts.forEach(function(l,i){
-    ["bg","frame"].forEach(function(w){
-      if (!l[w]) return;
-      jobs.push(kvGet(l[w]).then(function(blob){
-        if (!blob) return;
-        return new Promise(function(res){
-          var fr=new FileReader();
-          fr.onload=function(){ out.layouts[i][w+"Data"]=fr.result; res(); };
-          fr.onerror=function(){ res(); };
-          fr.readAsDataURL(blob);
-        });
-      }));
-    });
+  function embed(key, target, field){
+    if (!key) return;
+    jobs.push(kvGet(key).then(function(blob){
+      if (!blob) return;
+      return new Promise(function(res){
+        var fr=new FileReader();
+        fr.onload=function(){ target[field]=fr.result; res(); };
+        fr.onerror=function(){ res(); };
+        fr.readAsDataURL(blob);
+      });
+    }));
+  }
+  CFG.layouts.forEach(function(l,i){ embed(l.frame, out.layouts[i], "frameData"); });
+  (CFG.backgrounds||[]).forEach(function(e,i){
+    embed(e.h, out.backgrounds[i], "hData");
+    embed(e.v, out.backgrounds[i], "vData");
   });
   Promise.all(jobs).then(function(){
     var blob=new Blob([JSON.stringify(out,null,2)],{type:"application/json"});
@@ -1937,15 +2174,22 @@ $("admImport").addEventListener("change", function(){
     if (!data || !Array.isArray(data.layouts)) throw new Error("형식이 다릅니다");
     ask("지금 설정을 지우고 이 파일 내용으로 바꿀까요?", function(){
       var jobs=[];
+      function restore(obj, field, dest){
+        var d=obj[field];
+        delete obj[field];
+        obj[dest]=null;
+        if (!d) return;
+        jobs.push(fetch(d).then(function(r){ return r.blob(); })
+          .then(putImage).then(function(key){ obj[dest]=key; }).catch(function(){}));
+      }
       data.layouts.forEach(function(l){
-        ["bg","frame"].forEach(function(w){
-          var d=l[w+"Data"];
-          delete l[w+"Data"];
-          l[w]=null;
-          if (!d) return;
-          jobs.push(fetch(d).then(function(r){ return r.blob(); })
-            .then(putImage).then(function(key){ l[w]=key; }).catch(function(){}));
-        });
+        delete l.bgData; delete l.bg;        // 옛 파일에 있던 레이아웃별 배경
+        restore(l, "frameData", "frame");
+      });
+      if (!Array.isArray(data.backgrounds)) data.backgrounds=[];
+      data.backgrounds.forEach(function(e){
+        restore(e, "hData", "h");
+        restore(e, "vData", "v");
       });
       Promise.all(jobs).then(function(){
         CFG=data; if (!CFG.brand) CFG.brand="STUDIO 042";
@@ -1955,7 +2199,7 @@ $("admImport").addEventListener("change", function(){
         $("brandEdit").value=CFG.brand;
         buildChips($("filters"),shownFilters(),CFG.filter,false);
         buildChips($("timers"),TIMERS,CFG.timer,true);
-        buildModes(); renderAdmin(); say("설정을 가져왔습니다.");
+        buildModes(); buildBgPick(); renderAdmin(); say("설정을 가져왔습니다.");
       });
     });
   }).catch(function(){ say("읽을 수 없는 설정 파일입니다."); })
@@ -1965,7 +2209,8 @@ $("admImport").addEventListener("change", function(){
 $("admReset").addEventListener("click", function(){
   ask("모든 인화 설정과 올린 이미지를 지우고 기본값으로 되돌릴까요?", function(){
     var keys=[];
-    CFG.layouts.forEach(function(l){ if(l.bg) keys.push(l.bg); if(l.frame) keys.push(l.frame); });
+    CFG.layouts.forEach(function(l){ if(l.frame) keys.push(l.frame); });
+    (CFG.backgrounds||[]).forEach(function(e){ if(e.h) keys.push(e.h); if(e.v) keys.push(e.v); });
     Promise.all(keys.map(kvDel)).then(function(){
       imgCache={}; CFG=defaultConfig(); admIdx=0; selSlot=0; selText=0;
       return saveConfig();
@@ -1973,7 +2218,7 @@ $("admReset").addEventListener("click", function(){
       $("brandEdit").value=CFG.brand;
       buildChips($("filters"),shownFilters(),CFG.filter,false);
       buildChips($("timers"),TIMERS,CFG.timer,true);
-      buildModes(); renderAdmin(); say("기본 설정으로 되돌렸습니다.");
+      buildModes(); buildBgPick(); renderAdmin(); say("기본 설정으로 되돌렸습니다.");
     });
   });
 });
@@ -1995,6 +2240,7 @@ kvGet("config").then(function(saved){
   buildChips($("filters"), shownFilters(), CFG.filter, false);
   buildChips($("timers"), TIMERS, CFG.timer, true);
   buildModes();
+  buildBgPick();
   var L0 = enabledLayouts()[0];
   if (L0) setPrintPage(L0);
 });
