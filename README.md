@@ -15,16 +15,37 @@
 | `icon-180.png`, `icon-512.png` | 앱 아이콘 |
 | `make_icons.py` | 아이콘을 다시 만들고 싶을 때 (`python3 make_icons.py`) |
 
-## 올리기 — GitHub Pages (무료, 5분)
+## 올리기 — GitHub Pages
 
 카메라는 **https 주소에서만** 열립니다. 아이패드에 파일을 직접 넣어 여는 방식
 (`file://`)으로는 카메라가 동작하지 않으니 반드시 호스팅해야 합니다.
 
-1. github.com 에서 새 저장소를 만듭니다. 이름은 아무거나, **Public**으로.
-2. 이 폴더의 파일을 전부 올립니다 (Add file → Upload files → 드래그 → Commit).
-3. **Settings → Pages** 로 갑니다.
-4. Source를 **Deploy from a branch**, 브랜치는 **main**, 폴더는 **/ (root)** 로 두고 Save.
-5. 1~2분 뒤 주소가 뜹니다: `https://<아이디>.github.io/<저장소이름>/`
+이미 올라가 있습니다. 주소는 이것입니다.
+
+```
+https://audwns3579-sketch.github.io/photoboo/
+```
+
+저장소는 `audwns3579-sketch/photoboo`, 브랜치 `main`, 폴더 `/ (root)` 입니다.
+이 `booth/` 폴더가 그 저장소와 git 으로 연결돼 있어서, 여기서 밀면 바로 배포됩니다.
+
+### 고친 뒤 올리기
+
+1. `sw.js` 의 `CACHE` 번호를 올립니다 (지금 `booth-v11` → `booth-v12`).
+   이걸 안 올리면 아이패드가 캐시에 있는 옛날 파일을 계속 씁니다.
+2. 이 폴더에서 아래 세 줄을 실행합니다.
+
+```
+git add -A
+git commit -m "무엇을 고쳤는지"
+git push
+```
+
+3. 1~2분 뒤 Pages 가 다시 배포됩니다.
+4. 아이패드에서 앱을 **완전히 닫고**(앱 스위처에서 위로 밀기) 다시 엽니다.
+   한 번 열어 새 파일을 받고, 두 번째 열 때 새 버전이 뜹니다.
+
+지금 올라간 것과 비교하려면 `git status` 와 `git log --oneline -3` 을 보면 됩니다.
 
 ## 아이패드에 설치
 
