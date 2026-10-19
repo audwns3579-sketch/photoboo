@@ -75,20 +75,24 @@ label.lab{display:flex;flex-direction:column;gap:5px;font-size:11px;letter-spaci
 .note{font-size:13px;color:var(--muted);line-height:1.6}
 .note b{color:var(--fg);font-weight:500}
 .field{display:flex;flex-direction:column;gap:11px}
-.modes{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
-.mode{display:flex;gap:13px;align-items:center;padding:14px;border:1px solid var(--line);
-  border-radius:6px;background:var(--panel);text-align:left;min-width:0}
+.modes{display:flex;flex-wrap:wrap;gap:8px}
+/* 버튼이 늘어나지 않게 flex:none 으로 둡니다. 늘리면 미리보기는 그대로인데
+   버튼만 넓어져서 빈 공간이 생깁니다. */
+.mode{display:flex;gap:10px;align-items:center;padding:8px 14px 8px 8px;flex:none;
+  border:1px solid var(--line);border-radius:6px;background:var(--panel);text-align:left;min-width:0}
 .mode[aria-pressed=true]{border-color:var(--safelight);background:#241715}
-.mode-name{font-size:16px;font-weight:700}
-.mode-sub{font-size:12px;color:var(--muted)}
+.mode-name{font-size:15px;font-weight:700;line-height:1.3}
+.mode-sub{font-size:11px;color:var(--muted)}
 .mini{background:#fff;border-radius:2px;flex:none;position:relative;overflow:hidden}
 .mini i{position:absolute;background:#C9BDB4}
+/* 프레임을 미리보기 위에 덮습니다 */
+.mini b{position:absolute;inset:0;background-size:100% 100%;background-repeat:no-repeat}
 .swatches{display:flex;flex-wrap:wrap;gap:9px}
 .sw{position:relative;width:58px;height:58px;border-radius:6px;overflow:hidden;
   border:2px solid var(--line);background:#fff;background-size:cover;background-position:center;
   flex:none;padding:0}
 .sw[aria-pressed=true]{border-color:var(--safelight)}
-.sw .nm{position:absolute;left:0;right:0;bottom:0;font-size:9px;line-height:1.5;
+.sw .nm{position:absolute;left:0;right:0;bottom:0;font-size:10px;line-height:1.6;
   background:rgba(12,10,9,.72);color:var(--fg);text-align:center;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 2px}
 .sw.none{background:
@@ -160,6 +164,8 @@ label.lab{display:flex;flex-direction:column;gap:5px;font-size:11px;letter-spaci
   text-shadow:0 1px 4px rgba(0,0,0,.8);pointer-events:none}
 .slot .hd{position:absolute;right:-9px;bottom:-9px;width:22px;height:22px;border-radius:50%;
   background:var(--lamp);border:2px solid #1A1413;cursor:nwse-resize;touch-action:none}
+/* 자석 맞추기 안내선 */
+.editor .guide{position:absolute;background:var(--lamp);pointer-events:none;z-index:7;opacity:.95}
 .txt{position:absolute;border:1px dashed var(--muted);padding:1px 3px;color:#111;
   white-space:nowrap;cursor:move;touch-action:none;transform:translate(-50%,-50%)}
 .txt.sel{border-color:var(--lamp);border-style:solid}
@@ -435,11 +441,29 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;
           <button class="btn sm" id="slotDup">선택 칸 복제</button>
           <button class="btn sm danger" id="slotDel">선택 칸 삭제</button>
         </div>
+        <h3>인화지 기준으로 붙이기</h3>
+        <div class="grid3">
+          <button class="btn sm ghost" id="slotAlL">왼쪽 끝</button>
+          <button class="btn sm ghost" id="slotAlCX">가로 가운데</button>
+          <button class="btn sm ghost" id="slotAlR">오른쪽 끝</button>
+          <button class="btn sm ghost" id="slotAlT">위 끝</button>
+          <button class="btn sm ghost" id="slotAlCY">세로 가운데</button>
+          <button class="btn sm ghost" id="slotAlB">아래 끝</button>
+        </div>
+        <h3>선택 칸에 맞추기</h3>
+        <div class="grid3">
+          <button class="btn sm ghost" id="slotSame">같은 크기로</button>
+          <button class="btn sm ghost" id="slotAlRow">같은 줄 맞춤</button>
+          <button class="btn sm ghost" id="slotAlCol">같은 열 맞춤</button>
+        </div>
         <div class="row">
           <button class="btn sm ghost" id="slotRowX">가로로 고르게</button>
           <button class="btn sm ghost" id="slotRowY">세로로 고르게</button>
           <button class="btn sm ghost" id="slotTwin">두 줄로 복제</button>
         </div>
+        <label class="lab" style="flex-direction:row;align-items:center;gap:9px;text-transform:none;letter-spacing:0;font-size:14px;color:var(--fg)">
+          <input type="checkbox" id="snapOn" checked style="width:auto"> 자석 맞추기
+        </label>
         <div class="grid2" id="slotFields">
           <label class="lab">X<input type="number" id="slotX" step="1"></label>
           <label class="lab">Y<input type="number" id="slotY" step="1"></label>
@@ -449,6 +473,10 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;
         </div>
         <p class="note">같은 번호를 쓰면 같은 사진이 여러 칸에 들어갑니다. 두 줄로 나눠 갖는
         인화지는 이렇게 만듭니다.</p>
+        <p class="note"><b>자석 맞추기</b>를 켜두면 칸을 끌 때 다른 칸의 선과 인화지 가운데에
+        달라붙고, 달라붙은 자리에 노란 선이 보입니다. 손으로 끌어도 위치가 딱 맞습니다.</p>
+        <p class="note"><b>같은 줄 맞춤</b>은 선택한 칸과 위아래로 겹치는 칸들의 Y·세로를,
+        <b>같은 열 맞춤</b>은 좌우로 겹치는 칸들의 X·가로를 선택한 칸과 같게 만듭니다.</p>
       </div>
 
       <div class="card">
@@ -465,6 +493,15 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;
           <label class="lab">Y<input type="number" id="textY" step="1"></label>
           <label class="lab">크기<input type="number" id="textSize" step="1" min="6"></label>
         </div>
+        <div class="grid2">
+          <button class="btn sm ghost" id="textAlCX">가로 가운데</button>
+          <button class="btn sm ghost" id="textAlCY">세로 가운데</button>
+          <button class="btn sm ghost" id="textAlSlot">선택 칸 가운데</button>
+          <button class="btn sm ghost" id="textAlSame">글자끼리 세로줄 맞춤</button>
+        </div>
+        <p class="note">가운데로 붙이면 <b>정렬</b>도 가운데로 바뀝니다.
+        <b>글자끼리 세로줄 맞춤</b>은 나머지 글자의 X와 정렬을 선택한 글자와 같게 만듭니다.
+        글자도 끌 때 자석이 걸립니다.</p>
         <div class="grid3">
           <label class="lab">서체<select id="textFont"><option value="display">제목체</option><option value="body">본문체</option></select></label>
           <label class="lab">정렬<select id="textAlign"><option value="center">가운데</option><option value="left">왼쪽</option><option value="right">오른쪽</option></select></label>
@@ -515,7 +552,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;
    ══════════════════════════════════════════ */
 function defaultConfig(){
   return {
-    version: 7,
+    version: 8,
     brand: "STUDIO 042",
     timer: 3,
     filter: "bright",
@@ -562,6 +599,21 @@ function defaultConfig(){
           {content:"{date}",  x:900, y:1758, size:19, font:"body",    align:"center", color:"#9A9A9A"}
         ],
         cut: { on:true, x:600, color:"#D8D0CA" }
+      },
+      /* 폴라로이드 — photoshop/polaroid-4x6.jsx 와 같은 자리를 씁니다.
+         여백 90, 사진 1020 × 1275 (4:5), 아래 띠 435, 글자 색 #740A1B. */
+      {
+        id: "polaroid", name: "폴라로이드", enabled: true,
+        canvas: { w:1200, h:1800 },
+        frame: null,
+        slots: [
+          {x:90, y:90, w:1020, h:1275, shot:0}
+        ],
+        texts: [
+          {content:"{brand}", x:600, y:1600, size:60, font:"display", align:"center", color:"#740A1B"},
+          {content:"{date}",  x:600, y:1650, size:20, font:"body",    align:"center", color:"#9A9A9A"}
+        ],
+        cut: { on:false, x:600, color:"#D8D0CA" }
       }
     ]
   };
@@ -607,7 +659,7 @@ var TIMERS = [3,5,10];
 /* 예전에 저장해둔 설정을 새 기본값에 맞춰 올려줍니다.
    손대지 않은 기본 레이아웃만 바꾸고, 직접 편집했거나 이미지를 올린 것은 그대로 둡니다. */
 function migrate(cfg){
-  if (!cfg || cfg.version >= 7) return cfg;
+  if (!cfg || cfg.version >= 8) return cfg;
 
   // 예전 보정은 이름만 있었습니다. 같은 이름의 새 보정으로 바꿔 끼웁니다.
   if (!Array.isArray(cfg.filters) || !cfg.filters.length){
@@ -641,7 +693,12 @@ function migrate(cfg){
     delete l.bg;
   });
   if (cfg.bgId === undefined) cfg.bgId = null;
-  cfg.version = 7;
+  // 폴라로이드를 나중에 넣었습니다. 예전 설정에는 없으니 뒤에 붙여줍니다.
+  var hasPolaroid = cfg.layouts.filter(function(l){ return l.id === "polaroid"; }).length > 0;
+  if (!hasPolaroid){
+    cfg.layouts.push(defaultConfig().layouts.filter(function(d){ return d.id === "polaroid"; })[0]);
+  }
+  cfg.version = 8;
   return cfg;
 }
 
@@ -762,15 +819,16 @@ function resolveText(s){
 /* ══════════════════════════════════════════
    손님 화면
    ══════════════════════════════════════════ */
+var MINI_LONG = 112;   // 미리보기 네모의 긴 쪽 길이(px)
 function miniHtml(L, idx){
-  var scale = 92 / Math.max(L.canvas.w, L.canvas.h);
+  var scale = MINI_LONG / Math.max(L.canvas.w, L.canvas.h);
   var w = Math.round(L.canvas.w*scale), h = Math.round(L.canvas.h*scale);
   var html = '<span class="mini" data-mini="'+idx+'" style="width:'+w+'px;height:'+h+'px">';
   L.slots.slice(0,16).forEach(function(s){
     html += '<i style="left:'+(s.x/L.canvas.w*100)+'%;top:'+(s.y/L.canvas.h*100)+'%;'+
             'width:'+(s.w/L.canvas.w*100)+'%;height:'+(s.h/L.canvas.h*100)+'%"></i>';
   });
-  return html+'</span>';
+  return html+'<b data-minifr="'+idx+'"></b></span>';
 }
 function buildModes(){
   var list = enabledLayouts();
@@ -786,16 +844,20 @@ function buildModes(){
   updateShotNote();
 }
 
-/* 인화 방식 미리보기 네모에 고른 배경을 깔아줍니다 */
+/* 인화 방식 미리보기 네모에 고른 배경과 프레임을 깔아줍니다 */
 function paintMiniBackgrounds(list){
   list.forEach(function(L, i){
     var el = document.querySelector('.mini[data-mini="'+i+'"]');
     if (!el) return;
     var key = bgKeyFor(L);
-    if (!key){ el.style.backgroundImage = "none"; return; }
-    getImage(key).then(function(b){
+    if (!key){ el.style.backgroundImage = "none"; }
+    else getImage(key).then(function(b){
       var e2 = document.querySelector('.mini[data-mini="'+i+'"]');
       if (e2) e2.style.backgroundImage = b ? 'url('+b.url+')' : "none";
+    });
+    getImage(L.frame).then(function(f){
+      var e3 = document.querySelector('b[data-minifr="'+i+'"]');
+      if (e3) e3.style.backgroundImage = f ? 'url('+f.url+')' : "none";
     });
   });
 }
@@ -806,10 +868,15 @@ function buildBgPick(){
   var host = $("bgPick");
   if (!L){ host.innerHTML = ""; return; }
   var list = allBackgrounds();
-  var html = '<button class="sw none" data-b="" aria-pressed="'+(!CFG.bgId)+'">'+
+  // 섬네일을 인화지 비율에 맞춰 크게 보여줍니다
+  var ar = L.canvas.w / L.canvas.h, SW_LONG = 118;
+  var tw = (ar >= 1) ? SW_LONG : Math.round(SW_LONG*ar);
+  var th = (ar >= 1) ? Math.round(SW_LONG/ar) : SW_LONG;
+  var size = 'style="width:'+tw+'px;height:'+th+'px"';
+  var html = '<button class="sw none" data-b="" '+size+' aria-pressed="'+(!CFG.bgId)+'">'+
              '<span class="nm">없음</span></button>';
   list.forEach(function(e){
-    html += '<button class="sw" data-b="'+e.id+'" aria-pressed="'+(CFG.bgId===e.id)+'">'+
+    html += '<button class="sw" data-b="'+e.id+'" '+size+' aria-pressed="'+(CFG.bgId===e.id)+'">'+
             '<span class="nm">'+escapeHtml(e.name)+'</span></button>';
   });
   if (!list.length){
@@ -1966,6 +2033,59 @@ $("slotTwin").addEventListener("click", function(){
   say("왼쪽 칸을 오른쪽에 같은 사진 번호로 복제했습니다.");
 });
 
+/* ── 정렬 ────────────────────────────────
+   편집 화면만 다시 그립니다. 카메라는 다시 찾지 않습니다. */
+function redrawEdit(){
+  renderSlotFields(); renderTextList(); renderTextFields();
+  renderLayoutFields(); renderEditor(); saveConfig();
+}
+/* 선택한 칸을 인화지 끝이나 가운데에 붙입니다 */
+function alignSlot(how){
+  var l=L(), s=l.slots[selSlot];
+  if (!s){ say("먼저 칸을 고르세요."); return; }
+  if (how==="left")        s.x=0;
+  else if (how==="cx")     s.x=Math.round((l.canvas.w-s.w)/2);
+  else if (how==="right")  s.x=l.canvas.w-s.w;
+  else if (how==="top")    s.y=0;
+  else if (how==="cy")     s.y=Math.round((l.canvas.h-s.h)/2);
+  else if (how==="bottom") s.y=l.canvas.h-s.h;
+  redrawEdit();
+}
+[["slotAlL","left"],["slotAlCX","cx"],["slotAlR","right"],
+ ["slotAlT","top"],["slotAlCY","cy"],["slotAlB","bottom"]].forEach(function(pair){
+  $(pair[0]).addEventListener("click", function(){ alignSlot(pair[1]); });
+});
+$("slotSame").addEventListener("click", function(){
+  var l=L(), s=l.slots[selSlot];
+  if (!s){ say("기준이 될 칸을 먼저 고르세요."); return; }
+  l.slots.forEach(function(o){ o.w=s.w; o.h=s.h; });
+  redrawEdit(); say("모든 칸을 선택 칸과 같은 크기로 맞췄습니다.");
+});
+/* 선택 칸과 위아래로 겹치는 칸들의 Y·세로를 같게 만듭니다 */
+$("slotAlRow").addEventListener("click", function(){
+  var l=L(), s=l.slots[selSlot];
+  if (!s){ say("기준이 될 칸을 먼저 고르세요."); return; }
+  var c=s.y+s.h/2, n=0;
+  l.slots.forEach(function(o,i){
+    if (i===selSlot) return;
+    if (Math.abs((o.y+o.h/2)-c) <= Math.max(s.h,o.h)*0.6){ o.y=s.y; o.h=s.h; n++; }
+  });
+  redrawEdit();
+  say(n ? n+"개 칸을 같은 줄로 맞췄습니다." : "같은 줄에 있는 칸이 없습니다.");
+});
+/* 선택 칸과 좌우로 겹치는 칸들의 X·가로를 같게 만듭니다 */
+$("slotAlCol").addEventListener("click", function(){
+  var l=L(), s=l.slots[selSlot];
+  if (!s){ say("기준이 될 칸을 먼저 고르세요."); return; }
+  var c=s.x+s.w/2, n=0;
+  l.slots.forEach(function(o,i){
+    if (i===selSlot) return;
+    if (Math.abs((o.x+o.w/2)-c) <= Math.max(s.w,o.w)*0.6){ o.x=s.x; o.w=s.w; n++; }
+  });
+  redrawEdit();
+  say(n ? n+"개 칸을 같은 열로 맞췄습니다." : "같은 열에 있는 칸이 없습니다.");
+});
+
 /* 글자 */
 function renderTextList(){
   $("textList").innerHTML = L().texts.map(function(t,i){
@@ -2007,6 +2127,28 @@ $("textDel").addEventListener("click", function(){
   L().texts.splice(selText,1); selText=Math.min(selText, L().texts.length-1);
   renderTextList(); renderTextFields(); renderEditor(); saveConfig();
 });
+/* 글자 정렬. Y 는 글자 밑줄(기준선)이라 세로 가운데는 글자 크기만큼 내려 잡습니다 */
+function alignText(how){
+  var l=L(), t=l.texts[selText];
+  if (!t){ say("먼저 글자를 고르세요."); return; }
+  if (how==="cx"){ t.align="center"; t.x=Math.round(l.canvas.w/2); }
+  else if (how==="cy"){ t.y=Math.round(l.canvas.h/2 + t.size*0.35); }
+  else if (how==="slot"){
+    var s=l.slots[selSlot];
+    if (!s){ say("기준이 될 칸을 먼저 고르세요."); return; }
+    t.align="center"; t.x=Math.round(s.x+s.w/2);
+  } else if (how==="same"){
+    var n=0;
+    l.texts.forEach(function(o,i){ if (i!==selText){ o.x=t.x; o.align=t.align; n++; } });
+    if (!n){ say("맞출 다른 글자가 없습니다."); return; }
+    say(n+"개 글자를 선택 글자와 같은 세로줄에 맞췄습니다.");
+  }
+  redrawEdit();
+}
+[["textAlCX","cx"],["textAlCY","cy"],["textAlSlot","slot"],["textAlSame","same"]]
+  .forEach(function(pair){
+    $(pair[0]).addEventListener("click", function(){ alignText(pair[1]); });
+  });
 
 /* ── 편집 캔버스 ──────────────────────── */
 var EDIT_MAX = 460;
@@ -2044,6 +2186,12 @@ function renderEditor(){
       escapeHtml(resolveText(t.content))+'</div>';
   });
   html += '<div class="layer frameLayer" id="frLayer"></div>';
+  // 자석이 걸린 자리를 노란 선으로 보여줍니다
+  snapGuides.forEach(function(g){
+    html += '<div class="guide" style="'+(g.d==="v"
+      ? 'left:'+Math.round(g.at*k)+'px;top:0;width:1px;height:100%'
+      : 'top:'+Math.round(g.at*k)+'px;left:0;height:1px;width:100%')+'"></div>';
+  });
   ed.innerHTML=html;
 
   getImage(bgKeyFor(l)).then(function(b){
@@ -2057,6 +2205,44 @@ function escapeHtml(s){
   return String(s).replace(/[&<>"]/g, function(c){
     return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];
   });
+}
+
+/* ── 자석 맞추기 ──────────────────────────
+   끌 때 다른 칸·글자의 선과 인화지 가운데에 달라붙게 합니다.
+   SNAP_TOL 은 화면 픽셀이라 편집 배율로 나눠 인화지 픽셀로 바꿉니다. */
+var SNAP_TOL = 7;
+var snapGuides = [];
+function snapOn(){ var c=$("snapOn"); return !c || c.checked; }
+/* 달라붙을 세로선 자리들 — 인화지 양끝·가운데, 다른 칸의 왼쪽·가운데·오른쪽, 글자, 절취선 */
+function vLines(skipSlot, skipText){
+  var l=L(), out=[0, Math.round(l.canvas.w/2), l.canvas.w];
+  l.slots.forEach(function(s,i){ if (i===skipSlot) return; out.push(s.x, s.x+s.w/2, s.x+s.w); });
+  l.texts.forEach(function(t,i){ if (i===skipText) return; out.push(t.x); });
+  if (l.cut && l.cut.on) out.push(l.cut.x);
+  return out;
+}
+function hLines(skipSlot, skipText){
+  var l=L(), out=[0, Math.round(l.canvas.h/2), l.canvas.h];
+  l.slots.forEach(function(s,i){ if (i===skipSlot) return; out.push(s.y, s.y+s.h/2, s.y+s.h); });
+  l.texts.forEach(function(t,i){ if (i===skipText) return; out.push(t.y); });
+  return out;
+}
+/* 다른 칸들의 가로(또는 세로) 길이 — 크기를 바꿀 때 같은 크기로 달라붙게 씁니다 */
+function otherSizes(which, skipSlot){
+  var out=[];
+  L().slots.forEach(function(s,i){ if (i!==skipSlot) out.push(which==="w" ? s.w : s.h); });
+  return out;
+}
+/* 끌고 있는 기준점들 가운데 가장 가까운 선을 찾습니다. 없으면 null */
+function nearestLine(anchors, lines, tol){
+  var best=null, i, j, d;
+  for (i=0;i<anchors.length;i++){
+    for (j=0;j<lines.length;j++){
+      d = lines[j]-anchors[i];
+      if (Math.abs(d)<=tol && (!best || Math.abs(d)<Math.abs(best.d))) best={d:d, at:lines[j]};
+    }
+  }
+  return best;
 }
 
 /* 드래그: 칸 이동·크기, 글자 이동 */
@@ -2089,22 +2275,55 @@ function escapeHtml(s){
   $("editor").addEventListener("pointermove", function(e){
     if (!drag) return;
     var dx=(e.clientX-drag.sx)/drag.k, dy=(e.clientY-drag.sy)/drag.k;
-    var l=L();
+    // 손가락이 2px 넘게 움직였을 때만 자석을 겁니다. 그냥 눌러서 고르기만 할 때는
+    // 칸이 혼자 움직이지 않습니다.
+    var moved = Math.abs(e.clientX-drag.sx) + Math.abs(e.clientY-drag.sy);
+    var l=L(), tol=SNAP_TOL/drag.k, on=snapOn() && moved>2, g=[], hit;
     if (drag.type==="move"){
       var s=l.slots[selSlot];
       s.x=Math.round(drag.x0+dx); s.y=Math.round(drag.y0+dy);
+      if (on){
+        hit=nearestLine([s.x, s.x+s.w/2, s.x+s.w], vLines(selSlot,-1), tol);
+        if (hit){ s.x=Math.round(s.x+hit.d); g.push({d:"v", at:hit.at}); }
+        hit=nearestLine([s.y, s.y+s.h/2, s.y+s.h], hLines(selSlot,-1), tol);
+        if (hit){ s.y=Math.round(s.y+hit.d); g.push({d:"h", at:hit.at}); }
+      }
     } else if (drag.type==="size"){
       var s2=l.slots[selSlot];
       s2.w=Math.max(20,Math.round(drag.w0+dx)); s2.h=Math.max(20,Math.round(drag.h0+dy));
+      if (on){
+        // 오른쪽·아래 끝을 선에 맞추고, 선에 안 걸리면 다른 칸과 같은 크기로 맞춥니다
+        hit=nearestLine([s2.x+s2.w], vLines(selSlot,-1), tol);
+        if (hit){ s2.w=Math.max(20,Math.round(s2.w+hit.d)); g.push({d:"v", at:hit.at}); }
+        else {
+          hit=nearestLine([s2.w], otherSizes("w",selSlot), tol);
+          if (hit) s2.w=Math.max(20,Math.round(s2.w+hit.d));
+        }
+        hit=nearestLine([s2.y+s2.h], hLines(selSlot,-1), tol);
+        if (hit){ s2.h=Math.max(20,Math.round(s2.h+hit.d)); g.push({d:"h", at:hit.at}); }
+        else {
+          hit=nearestLine([s2.h], otherSizes("h",selSlot), tol);
+          if (hit) s2.h=Math.max(20,Math.round(s2.h+hit.d));
+        }
+      }
     } else {
       var t=l.texts[selText];
       t.x=Math.round(drag.x0+dx); t.y=Math.round(drag.y0+dy);
+      if (on){
+        hit=nearestLine([t.x], vLines(-1,selText), tol);
+        if (hit){ t.x=Math.round(hit.at); g.push({d:"v", at:hit.at}); }
+        hit=nearestLine([t.y], hLines(-1,selText), tol);
+        if (hit){ t.y=Math.round(hit.at); g.push({d:"h", at:hit.at}); }
+      }
     }
+    snapGuides=g;
     renderEditor();
   });
   function end(){
     if (!drag) return;
-    drag=null; renderSlotFields(); renderTextFields(); saveConfig();
+    drag=null;
+    if (snapGuides.length){ snapGuides=[]; }
+    renderSlotFields(); renderTextFields(); renderEditor(); saveConfig();
   }
   $("editor").addEventListener("pointerup", end);
   $("editor").addEventListener("pointercancel", end);
