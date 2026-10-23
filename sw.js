@@ -1,7 +1,7 @@
 /* STUDIO 042 — 오프라인 캐시.
    앱 내용을 고치고 아이패드에 반영되지 않으면 아래 CACHE 번호를 올리세요. */
-const CACHE = "booth-v11";
-const SHELL = ["./", "./index.html", "./camera-check.html", "./manifest.json", "./icon-180.png", "./icon-512.png"];
+const CACHE = "booth-v12";
+const SHELL = ["./", "./index.html", "./app.js", "./camera-check.html", "./manifest.json", "./icon-180.png", "./icon-512.png"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
