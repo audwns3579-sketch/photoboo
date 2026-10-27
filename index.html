@@ -75,14 +75,16 @@ label.lab{display:flex;flex-direction:column;gap:5px;font-size:11px;letter-spaci
 .note{font-size:13px;color:var(--muted);line-height:1.6}
 .note b{color:var(--fg);font-weight:500}
 .field{display:flex;flex-direction:column;gap:11px}
-.modes{display:flex;flex-wrap:wrap;gap:8px}
+.modes{display:flex;flex-wrap:wrap;gap:12px}
+.setup-nav{display:flex;gap:10px}
+.setup-nav .btn{flex:1}
 /* 버튼이 늘어나지 않게 flex:none 으로 둡니다. 늘리면 미리보기는 그대로인데
    버튼만 넓어져서 빈 공간이 생깁니다. */
-.mode{display:flex;gap:10px;align-items:center;padding:8px 14px 8px 8px;flex:none;
+.mode{display:flex;gap:14px;align-items:center;padding:12px 20px 12px 12px;flex:none;
   border:1px solid var(--line);border-radius:6px;background:var(--panel);text-align:left;min-width:0}
 .mode[aria-pressed=true]{border-color:var(--safelight);background:#241715}
-.mode-name{font-size:15px;font-weight:700;line-height:1.3}
-.mode-sub{font-size:11px;color:var(--muted)}
+.mode-name{font-size:19px;font-weight:700;line-height:1.3}
+.mode-sub{font-size:12px;color:var(--muted)}
 .mini{background:#fff;border-radius:2px;flex:none;position:relative;overflow:hidden}
 .mini i{position:absolute;background:#C9BDB4}
 /* 프레임을 미리보기 위에 덮습니다 */
@@ -248,24 +250,26 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;
            autocomplete="off" autocapitalize="characters" spellcheck="false">
     <p class="note">이름을 바꾸면 인화지에 그대로 찍힙니다. 이름을 <b>길게 누르면</b> 관리자 화면이 열립니다.</p>
   </div>
-  <div class="field">
-    <p class="eyebrow">인화 방식</p>
+  <div class="field" data-step="1">
+    <p class="eyebrow">1 / 3 — 인화 방식</p>
     <div class="modes" id="modes" role="group" aria-label="인화 방식"></div>
   </div>
-  <div class="field">
-    <p class="eyebrow">배경</p>
+  <div class="field" data-step="2" hidden>
+    <p class="eyebrow">2 / 3 — 배경</p>
     <div class="swatches" id="bgPick" role="group" aria-label="배경"></div>
   </div>
-  <div class="field">
-    <p class="eyebrow">보정</p>
+  <div class="field" data-step="3" hidden>
+    <p class="eyebrow">3 / 3 — 보정</p>
     <div class="chips" id="filters" role="group" aria-label="보정"></div>
-  </div>
-  <div class="field">
-    <p class="eyebrow">셀프 타이머</p>
+    <p class="eyebrow" style="margin-top:14px">셀프 타이머</p>
     <div class="chips" id="timers" role="group" aria-label="셀프 타이머"></div>
   </div>
-  <button class="btn primary" id="startBtn" style="width:100%">카메라 켜기</button>
-  <p class="note" id="shotNote"></p>
+  <div class="setup-nav">
+    <button class="btn ghost" id="backBtn" hidden>뒤로</button>
+    <button class="btn ghost" id="nextBtn">다음</button>
+    <button class="btn primary" id="startBtn" hidden>카메라 켜기</button>
+  </div>
+  <p class="note" id="shotNote" hidden></p>
 </section>
 
 <!-- 2. 촬영 -->

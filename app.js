@@ -7,9 +7,9 @@
    ══════════════════════════════════════════ */
 function defaultConfig(){
   return {
-    version: 8,
+    version: 9,
     brand: "STUDIO 042",
-    timer: 3,
+    timer: 5,
     filter: "bright",
     cameraId: null,
     filters: defaultFilters(),
@@ -114,7 +114,10 @@ var TIMERS = [3,5,10];
 /* 예전에 저장해둔 설정을 새 기본값에 맞춰 올려줍니다.
    손대지 않은 기본 레이아웃만 바꾸고, 직접 편집했거나 이미지를 올린 것은 그대로 둡니다. */
 function migrate(cfg){
-  if (!cfg || cfg.version >= 8) return cfg;
+  if (!cfg) return cfg;
+  // 기본 타이머를 5초로 바꿨습니다. 옛 기본값 3초로 두었던 설정만 올려줍니다.
+  if (cfg.version < 9 && cfg.timer === 3) cfg.timer = 5;
+  if (cfg.version >= 8){ cfg.version = 9; return cfg; }
 
   // 예전 보정은 이름만 있었습니다. 같은 이름의 새 보정으로 바꿔 끼웁니다.
   if (!Array.isArray(cfg.filters) || !cfg.filters.length){
@@ -153,7 +156,7 @@ function migrate(cfg){
   if (!hasPolaroid){
     cfg.layouts.push(defaultConfig().layouts.filter(function(d){ return d.id === "polaroid"; })[0]);
   }
-  cfg.version = 8;
+  cfg.version = 9;
   return cfg;
 }
 
@@ -230,7 +233,8 @@ $("confirmYes").addEventListener("click", function(){
   var cb=confirmCb; confirmCb=null; if (cb) cb();
 });
 
-function show(el){ [setupEl,shootEl,resultEl,adminEl].forEach(function(s){ s.hidden = s!==el; }); }
+function show(el){ [setupEl,shootEl,resultEl,adminEl].forEach(function(s){ s.hidden = s!==el; });
+  if (el===setupEl && typeof showStep==="function") showStep(1); }
 
 function today(){
   var d=new Date(), p=function(n){ return String(n).padStart(2,"0"); };
@@ -274,7 +278,7 @@ function resolveText(s){
 /* ══════════════════════════════════════════
    손님 화면
    ══════════════════════════════════════════ */
-var MINI_LONG = 112;   // 미리보기 네모의 긴 쪽 길이(px)
+var MINI_LONG = 168;   // 미리보기 네모의 긴 쪽 길이(px)
 function miniHtml(L, idx){
   var scale = MINI_LONG / Math.max(L.canvas.w, L.canvas.h);
   var w = Math.round(L.canvas.w*scale), h = Math.round(L.canvas.h*scale);
@@ -357,6 +361,7 @@ $("bgPick").addEventListener("click", function(e){
   saveConfig();
   buildBgPick();
   buildModes();          // 미리보기 네모를 새 배경으로 다시 그립니다
+  showStep(3);
 });
 function updateShotNote(){
   var L = enabledLayouts()[cur];
@@ -376,6 +381,21 @@ function pressOnly(host, value){
   });
 }
 
+/* 시작 화면은 한 번에 한 가지만 고르게 합니다: 1 인화 방식 → 2 배경 → 3 보정 */
+var step = 1;
+function showStep(n){
+  step = Math.min(3, Math.max(1, n));
+  Array.prototype.forEach.call(document.querySelectorAll('#setup [data-step]'), function(el){
+    el.hidden = Number(el.dataset.step) !== step;
+  });
+  $("backBtn").hidden  = step === 1;
+  $("nextBtn").hidden  = step === 3;
+  $("startBtn").hidden = step !== 3;
+  $("shotNote").hidden = step !== 3;
+}
+$("backBtn").addEventListener("click", function(){ showStep(step-1); });
+$("nextBtn").addEventListener("click", function(){ showStep(step+1); });
+
 $("modes").addEventListener("click", function(e){
   var b=e.target.closest(".mode"); if(!b) return;
   cur = Number(b.dataset.i);
@@ -384,6 +404,7 @@ $("modes").addEventListener("click", function(e){
   });
   buildBgPick();
   updateShotNote();
+  showStep(2);
 });
 $("filters").addEventListener("click", function(e){
   var b=e.target.closest(".chip"); if(!b) return;
@@ -1915,6 +1936,7 @@ kvGet("config").then(function(saved){
   buildChips($("timers"), TIMERS, CFG.timer, true);
   buildModes();
   buildBgPick();
+  showStep(1);
   var L0 = enabledLayouts()[0];
   if (L0) setPrintPage(L0);
 });
