@@ -110,10 +110,9 @@ label.lab{display:flex;flex-direction:column;gap:5px;font-size:11px;letter-spaci
   aspect-ratio:var(--ar);background:#000;border-radius:6px;overflow:hidden;
   box-shadow:0 0 0 1px var(--line);isolation:isolate}
 #video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);display:block}
-/* 보정 층 — 인화 합성과 겹치는 순서가 같습니다 */
+/* 실시간 미리보기 — 비디오 위에 보정한 그림을 그립니다. 비디오는 밑에서 계속 재생됩니다. */
+.live{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
 .lay{position:absolute;inset:0;pointer-events:none}
-.lay.soft{-webkit-backdrop-filter:blur(0);backdrop-filter:blur(0)}
-.lay.fade{background:#FFFFFF;mix-blend-mode:screen;opacity:0}
 .stage::after{content:'';position:absolute;inset:0;pointer-events:none;
   box-shadow:inset 0 0 90px rgba(0,0,0,.45)}
 #flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;
@@ -276,9 +275,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;
 <section class="screen" id="shoot" hidden>
   <div class="stage" id="stage">
     <video id="video" playsinline muted autoplay></video>
-    <div class="lay soft" id="softLayer"></div>
-    <div class="lay" id="tintLayer"></div>
-    <div class="lay fade" id="fadeLayer"></div>
+    <canvas class="live" id="live"></canvas>
     <div class="lay" id="vignLayer"></div>
     <div class="ticks" id="ticks"></div>
     <div class="count" id="count" hidden>
@@ -341,9 +338,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;
         <h3>보정과 색감</h3>
         <div class="lookprev" id="lookPrevBox">
           <video id="pvVideo" playsinline muted autoplay></video>
-          <div class="lay soft" id="pvSoft"></div>
-          <div class="lay" id="pvTint"></div>
-          <div class="lay fade" id="pvFade"></div>
+          <canvas class="live" id="pvLive"></canvas>
           <div class="lay" id="pvVign"></div>
           <p class="pvOff" id="pvOff">카메라로 보면서 맞출 수 있습니다</p>
         </div>
@@ -360,6 +355,13 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;
           <button class="btn sm ghost" id="fDup">복제</button>
           <button class="btn sm danger" id="fDel">삭제</button>
         </div>
+        <h3 style="margin-top:4px">얼굴 보정 — 모든 보정에 공통</h3>
+        <div class="sliders" id="faceSliders"></div>
+        <p class="note"><b>잡티 흐림 px</b>은 가우시안 흐림 반지름입니다(카메라 사진 긴 쪽 1600px 기준, 기본 17).
+        흐린 그림을 얼마나 섞을지는 아래 각 보정의 <b>피부 보정</b> 값이 정합니다.
+        <b>얼굴 줄이기</b>는 점선 타원 안을 가운데로 모읍니다. 손님 얼굴이 놓이는 자리에 맞춰
+        위치와 범위를 정하세요. 촬영 화면에도 같은 점선이 보여서 손님이 얼굴을 맞출 수 있습니다.</p>
+
         <div class="layoutlist" id="filterList"></div>
         <label class="lab">이름<input type="text" id="fName" maxlength="12"></label>
         <label class="lab" style="flex-direction:row;align-items:center;gap:9px;text-transform:none;letter-spacing:0;font-size:14px;color:var(--fg)">
@@ -378,7 +380,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;
         세기가 0이면 아무것도 입히지 않습니다.</p>
         <p class="note"><b>피부 보정</b>은 주변과 밝기 차가 작은 자리만 다듬습니다. 잡티와 모공은
         줄고 눈·눈썹·머리카락은 그대로 남습니다. <b>디테일 지키기</b>를 올릴수록 더 옅은 잡티만
-        건드립니다. 움직이는 화면으로는 판단이 어려우니 한 장 찍어 비교로 확인하세요.</p>
+        건드립니다. 위 미리보기에 찍힐 모습 그대로 보이고, 자세히 보려면 한 장 찍어 비교하세요.</p>
 
         <button class="btn sm danger" id="fReset">보정만 기본값으로</button>
       </div>

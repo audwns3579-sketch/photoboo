@@ -1,6 +1,6 @@
 /* STUDIO 042 — 오프라인 캐시.
    앱 내용을 고치고 아이패드에 반영되지 않으면 아래 CACHE 번호를 올리세요. */
-const CACHE = "booth-v13";
+const CACHE = "booth-v14";
 const SHELL = ["./", "./index.html", "./app.js", "./camera-check.html", "./manifest.json", "./icon-180.png", "./icon-512.png"];
 
 self.addEventListener("install", (e) => {

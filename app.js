@@ -11,6 +11,8 @@ function defaultConfig(){
     brand: "STUDIO 042",
     timer: 5,
     filter: "bright",
+    blurPx: 17,          // 잡티 흐림 반지름 — 카메라 사진(긴 쪽 1600px) 기준 가우시안 px
+    slim: { amount:0, x:50, y:45, size:35 },   // 얼굴 줄이기(유동화) — 세기, 가운데 위치 %, 범위 %
     cameraId: null,
     filters: defaultFilters(),
     backgrounds: [],     // 배경 목록 {id,name,h,v}
@@ -115,6 +117,9 @@ var TIMERS = [3,5,10];
    손대지 않은 기본 레이아웃만 바꾸고, 직접 편집했거나 이미지를 올린 것은 그대로 둡니다. */
 function migrate(cfg){
   if (!cfg) return cfg;
+  // 잡티 흐림과 얼굴 줄이기를 나중에 넣었습니다. 없으면 기본값을 채웁니다.
+  if (cfg.blurPx === undefined) cfg.blurPx = 17;
+  if (!cfg.slim) cfg.slim = defaultConfig().slim;
   // 기본 타이머를 5초로 바꿨습니다. 옛 기본값 3초로 두었던 설정만 올려줍니다.
   if (cfg.version < 9 && cfg.timer === 3) cfg.timer = 5;
   if (cfg.version >= 8){ cfg.version = 9; return cfg; }
@@ -455,55 +460,30 @@ function colorCss(f){
   if (f.hue)              p.push("hue-rotate("+f.hue+"deg)");
   return p.length ? p.join(" ") : "none";
 }
-/* 피부 보정 세기 → 흐림 반지름과 섞는 정도.
-   반지름을 그림 너비에 비례시켜야 미리보기와 인화가 같아집니다. */
-/* 잡티 크기만큼만 번지게 합니다. 너무 크면 눈 밑 그늘까지 뭉개집니다. */
-function softBlur(f, px){ return Math.max(1, px*(0.005 + 0.008*(f.smooth/100))); }
+/* 잡티 흐림 반지름(가우시안). 관리자가 정한 px 는 카메라 사진 긴 쪽 1600px 기준이라,
+   그림 크기에 비례시켜야 작은 미리보기와 인화가 같아집니다. */
+function softBlur(W, H){ return Math.max(1, (CFG.blurPx||0) * Math.max(W,H) / 1600); }
+/* 피부 보정 세기 → 흐린 그림을 섞는 정도 */
 function softAlpha(f){ return (f.smooth/100)*0.92; }
 /* 밝기 차 문턱. 이 값보다 차이가 크면 눈·머리카락·윤곽으로 보고 손대지 않습니다.
-   디테일 지키기를 올릴수록 문턱이 낮아져 아주 옅은 잡티만 건드립니다. */
+   디테일 지키기를 올릴수록 문턱이 낮아져 아주 옅은 잡티만 건드립니다.
+   가우시안 17px 처럼 흐림이 크면 잡티 자리의 차이도 커지므로 문턱을 넉넉히 둡니다.
+   (눈·눈썹은 피부와 밝기 차가 80 이상이라 그대로 남습니다) */
 function softThreshold(f){
   var d = (f.detail===undefined) ? 70 : f.detail;
-  return 10 + (100 - d) * 0.45;
+  return 16 + (100 - d) * 0.7;
 }
-/* 미리보기는 CSS 흐림이라 이 선택적 보정을 그대로 못 그립니다.
-   느낌만 보이도록 약하게 깔고, 실제 결과는 찍은 사진에서 나옵니다. */
-function previewSoftAlpha(f){ return softAlpha(f) * 0.35; }
 function fadeAlpha(f){ return (f.fade/100)*0.35; }
 function vignAlpha(f){ return (f.vignette/100)*0.55; }
 
-/* 미리보기 층에 보정을 입힙니다. els = {base, soft, tint, fade, vign}
-   겹치는 순서: 색 보정 → 피부 보정 → 색감 → 먹색 → 비네팅.
-   인화 합성도 이 순서 그대로입니다. */
-function paintLook(els, f, px){
-  if (els.base) els.base.style.filter = colorCss(f);
-  if (els.soft){
-    var on = f.smooth>0;
-    els.soft.style.webkitBackdropFilter = on ? "blur("+softBlur(f,px)+"px)" : "none";
-    els.soft.style.backdropFilter        = on ? "blur("+softBlur(f,px)+"px)" : "none";
-    els.soft.style.opacity = on ? previewSoftAlpha(f) : 0;
-  }
-  if (els.tint){
-    els.tint.style.background      = f.tint.color;
-    els.tint.style.mixBlendMode    = f.tint.mode;
-    els.tint.style.opacity         = (f.tint.amount||0)/100;
-  }
-  if (els.fade){
-    els.fade.style.opacity = fadeAlpha(f);
-  }
-  if (els.vign){
-    els.vign.style.opacity = 1;
-    els.vign.style.background = f.vignette
-      ? "radial-gradient(ellipse at center, rgba(0,0,0,0) 38%, rgba(0,0,0,"+vignAlpha(f)+") 100%)"
-      : "none";
-  }
+/* 미리보기 위에 비네팅만 CSS 로 덮습니다. 인화도 칸마다 따로 겁니다.
+   나머지 보정은 drawLook 이 캔버스에 직접 그립니다. */
+function paintVignette(el, f){
+  el.style.background = f.vignette
+    ? "radial-gradient(ellipse at center, rgba(0,0,0,0) 38%, rgba(0,0,0,"+vignAlpha(f)+") 100%)"
+    : "none";
 }
-function applyPreviewFilter(){
-  var st=$("stage");
-  paintLook({base:$("video"), soft:$("softLayer"), tint:$("tintLayer"),
-             fade:$("fadeLayer"), vign:$("vignLayer")},
-            activeFilter(), st ? (st.clientWidth||480) : 480);
-}
+function applyPreviewFilter(){ paintVignette($("vignLayer"), activeFilter()); }
 
 /* 캔버스에 같은 보정을 입힙니다.
    iOS 17 아래 사파리는 ctx.filter 를 무시하므로 색은 직접 계산합니다. */
@@ -573,25 +553,32 @@ function free(c){ if (c && c.width){ c.width=0; c.height=0; } }
    눈·눈썹·머리카락·얼굴 윤곽은 차이가 커서 그대로 남습니다. */
 function softenInto(dst, src, f){
   var a = softAlpha(f);
-  if (a<=0) return;
+  if (a<=0 || !(CFG.blurPx>0)) return;
   var W = dst.width, H = dst.height;
   if (!W || !H) return;
-
-  var div = Math.max(2, softBlur(f, W));
-  var sw = Math.max(2, Math.round(W/div)), sh = Math.max(2, Math.round(H/div));
-
-  var small = document.createElement("canvas");
-  small.width=sw; small.height=sh;
-  var sx = small.getContext("2d");
-  sx.imageSmoothingEnabled = true;
-  sx.drawImage(src, 0, 0, sw, sh);
+  var r = softBlur(W, H);
 
   var blur = document.createElement("canvas");
   blur.width=W; blur.height=H;
   var bx = blur.getContext("2d");
-  bx.imageSmoothingEnabled = true;
-  bx.drawImage(small, 0, 0, W, H);
-  free(small);
+  if (ctxFilterWorks()){
+    // 가우시안 흐림. 가장자리가 투명과 섞여 어두워지지 않게 원본을 먼저 깔아둡니다.
+    bx.drawImage(src, 0, 0);
+    bx.filter = "blur("+r+"px)";
+    bx.drawImage(src, 0, 0);
+    bx.filter = "none";
+  } else {
+    // ctx.filter 가 없는 옛 사파리: 줄였다 늘리는 흐림으로 대신합니다
+    var div = Math.max(2, r);
+    var small = document.createElement("canvas");
+    small.width = Math.max(2, Math.round(W/div)); small.height = Math.max(2, Math.round(H/div));
+    var sx = small.getContext("2d");
+    sx.imageSmoothingEnabled = true;
+    sx.drawImage(src, 0, 0, small.width, small.height);
+    bx.imageSmoothingEnabled = true;
+    bx.drawImage(small, 0, 0, W, H);
+    free(small);
+  }
 
   var dctx = dst.getContext("2d");
   var o, b;
@@ -645,6 +632,99 @@ function drawVignette(ctx, x, y, w, h, f){
   ctx.save(); ctx.fillStyle=g; ctx.fillRect(x,y,w,h); ctx.restore();
 }
 
+/* 얼굴 줄이기 — 포토샵 유동화의 오목(Pucker)처럼 타원 안쪽을 가운데로 모읍니다.
+   타원 밖은 그대로이고, 경계로 갈수록 부드럽게 원래 자리로 돌아갑니다.
+   s = {amount 0~100, x·y 가운데 위치(그림의 %), size 타원 너비(그림 너비의 %)} */
+function slimInto(cv, s){
+  var k = s ? (s.amount||0)/100*0.45 : 0;   // 0.5 를 넘으면 경계에서 그림이 접힙니다
+  if (k<=0) return;
+  var W=cv.width, H=cv.height;
+  var cx=s.x/100*W, cy=s.y/100*H, rx=s.size/100*W/2, ry=rx*1.3;   // 얼굴처럼 세로로 긴 타원
+  var x0=Math.max(0,Math.floor(cx-rx)), x1=Math.min(W,Math.ceil(cx+rx));
+  var y0=Math.max(0,Math.floor(cy-ry)), y1=Math.min(H,Math.ceil(cy+ry));
+  var bw=x1-x0, bh=y1-y0;
+  if (bw<2 || bh<2) return;
+  var ctx=cv.getContext("2d"), img;
+  try { img=ctx.getImageData(x0,y0,bw,bh); } catch(e){ return; }
+  var dst=img.data, src=new Uint8ClampedArray(dst);
+  var lcx=cx-x0, lcy=cy-y0, mx=bw-1.001, my=bh-1.001;
+  for (var y=0; y<bh; y++){
+    var dy=(y-lcy)/ry, dy2=dy*dy;
+    if (dy2>=1) continue;
+    for (var x=0; x<bw; x++){
+      var dx=(x-lcx)/rx, d2=dx*dx+dy2;
+      if (d2>=1) continue;
+      // 가운데일수록 더 먼 곳을 가져와서 안쪽이 작아집니다
+      var sc=1+k*(1-d2);
+      var sx=lcx+(x-lcx)*sc, sy=lcy+(y-lcy)*sc;
+      if (sx<0) sx=0; else if (sx>mx) sx=mx;
+      if (sy<0) sy=0; else if (sy>my) sy=my;
+      var ix=sx|0, iy=sy|0, fx=sx-ix, fy=sy-iy;
+      var i00=(iy*bw+ix)*4, i10=i00+4, i01=i00+bw*4, i11=i01+4, o=(y*bw+x)*4;
+      for (var c=0;c<3;c++){
+        var top=src[i00+c]+(src[i10+c]-src[i00+c])*fx;
+        var bot=src[i01+c]+(src[i11+c]-src[i01+c])*fx;
+        dst[o+c]=top+(bot-top)*fy;
+      }
+    }
+  }
+  ctx.putImageData(img,x0,y0);
+}
+
+/* src(비디오나 캔버스)를 out 크기로 그리고 보정을 입힙니다.
+   촬영·비교·실시간 미리보기가 모두 이 함수를 써서 보이는 대로 찍힙니다.
+   순서: 색 보정 → 얼굴 줄이기 → 피부 보정 → 색감 덧씌우기 → 먹색 띄우기 */
+function drawLook(out, src, f, mirror, slim){
+  var W=out.width, H=out.height, ox=out.getContext("2d");
+  ox.save();
+  if (mirror){ ox.translate(W,0); ox.scale(-1,1); }
+  // iOS 17 아래 사파리는 ctx.filter 를 무시하므로 색은 직접 계산합니다
+  if (ctxFilterWorks()){
+    ox.filter = colorCss(f);
+    ox.drawImage(src,0,0,W,H);
+    ox.filter = "none";
+    ox.restore();
+  } else {
+    ox.drawImage(src,0,0,W,H);
+    ox.restore();
+    applyMatrix(ox, W, H, f);
+  }
+  slimInto(out, slim);
+  softenInto(out, out, f);
+  overlayInto(ox, W, H, f);
+}
+
+/* 실시간 미리보기 — 비디오를 작게 줄여 매 프레임 drawLook 으로 그립니다.
+   on() 이 거짓이 되면 멈춥니다. guide() 가 참이면 얼굴 줄이기 범위를 점선으로 보여줍니다. */
+var LIVE_LONG = 640;
+function startLive(video, canvas, look, on, guide){
+  if (canvas.dataset.live) return;
+  canvas.dataset.live = "1";
+  (function frame(){
+    if (!on()){ delete canvas.dataset.live; return; }
+    var vw=video.videoWidth, vh=video.videoHeight;
+    if (vw && vh){
+      var sc=Math.min(1, LIVE_LONG/Math.max(vw,vh));
+      var W=Math.round(vw*sc), H=Math.round(vh*sc);
+      if (canvas.width!==W || canvas.height!==H){ canvas.width=W; canvas.height=H; }
+      drawLook(canvas, video, look(), mirrorFor(), CFG.slim);
+      if (guide() && CFG.slim.amount>0) drawSlimGuide(canvas);
+    }
+    requestAnimationFrame(frame);
+  })();
+}
+/* 손님이 얼굴을 맞출 자리. 미리보기에만 그리고 사진에는 들어가지 않습니다. */
+function drawSlimGuide(cv){
+  var s=CFG.slim, ctx=cv.getContext("2d"), rx=s.size/100*cv.width/2;
+  ctx.save();
+  ctx.strokeStyle="rgba(255,255,255,.75)"; ctx.lineWidth=Math.max(1.5, cv.width/320);
+  ctx.setLineDash([8,7]);
+  ctx.beginPath();
+  ctx.ellipse(s.x/100*cv.width, s.y/100*cv.height, rx, rx*1.3, 0, 0, Math.PI*2);
+  ctx.stroke();
+  ctx.restore();
+}
+
 /* ── 카메라 ───────────────────────────── */
 function stopStream(){
   if (S.stream){ S.stream.getTracks().forEach(function(t){ t.stop(); }); S.stream=null; }
@@ -678,6 +758,9 @@ function openCamera(){
       S.stream=st;
       var v=$("video"); v.srcObject=st;
       v.style.transform = mirrorFor() ? "scaleX(-1)" : "none";
+      startLive(v, $("live"), activeFilter,
+        function(){ return !!S.stream && !shootEl.hidden; },
+        function(){ return !$("goBtn").hidden; });       // 기다리는 동안만 얼굴 자리 표시
       return v.play().catch(function(){});
     });
 }
@@ -708,32 +791,11 @@ function wait(ms){ return new Promise(function(r){ setTimeout(r,ms); }); }
 function grabFull(){
   var v=$("video"), vw=v.videoWidth, vh=v.videoHeight;
   if (!vw||!vh) return null;
-  var f = activeFilter();
   var scale = Math.min(1, 1600/Math.max(vw,vh));
-  var W=Math.round(vw*scale), H=Math.round(vh*scale);
-
-  // 1) 원본 (전면 카메라는 거울처럼 뒤집어 담습니다)
   var out=document.createElement("canvas");
-  out.width=W; out.height=H;
-  var ox=out.getContext("2d");
-  ox.save();
-  if (mirrorFor()){ ox.translate(W,0); ox.scale(-1,1); }
-
-  // 2) 색 보정 — 미리보기는 video 에 CSS filter 를 걸고, 여기서는 같은 문자열을 씁니다
-  if (ctxFilterWorks()){
-    ox.filter = colorCss(f);
-    ox.drawImage(v,0,0,W,H);
-    ox.filter = "none";
-    ox.restore();
-  } else {
-    ox.drawImage(v,0,0,W,H);
-    ox.restore();
-    applyMatrix(ox, W, H, f);
-  }
-
-  // 3) 피부 보정 → 4) 색감 덧씌우기 → 먹색 띄우기
-  softenInto(out, out, f);
-  overlayInto(ox, W, H, f);
+  out.width=Math.round(vw*scale); out.height=Math.round(vh*scale);
+  // 전면 카메라는 거울처럼 뒤집어 담습니다
+  drawLook(out, v, activeFilter(), mirrorFor(), CFG.slim);
   return out;
 }
 /* 다 쓴 캔버스는 바로 비웁니다. iOS Safari는 페이지 전체의 캔버스 메모리가
@@ -983,6 +1045,17 @@ var SLIDERS = [
   {k:"sepia",      n:"세피아",    min:0,   max:100, def:0},
   {k:"hue",        n:"색상 돌리기",min:-45,max:45,  def:0}
 ];
+/* 얼굴 보정은 모든 보정에 공통입니다. 실시간 미리보기가 매 프레임 이 값을 읽습니다. */
+var FACE_SLIDERS = [
+  {k:"blurPx", n:"잡티 흐림 px", min:0,  max:40, get:function(){ return CFG.blurPx; },     set:function(v){ CFG.blurPx=v; }},
+  {k:"amount", n:"얼굴 줄이기",  min:0,  max:100,get:function(){ return CFG.slim.amount; }, set:function(v){ CFG.slim.amount=v; }},
+  {k:"size",   n:"줄일 범위",    min:10, max:80, get:function(){ return CFG.slim.size; },   set:function(v){ CFG.slim.size=v; }},
+  {k:"x",      n:"가로 위치",    min:10, max:90, get:function(){ return CFG.slim.x; },      set:function(v){ CFG.slim.x=v; }},
+  {k:"y",      n:"세로 위치",    min:10, max:90, get:function(){ return CFG.slim.y; },      set:function(v){ CFG.slim.y=v; }}
+];
+function renderFaceSliders(){
+  FACE_SLIDERS.forEach(function(s){ $("fc_"+s.k).value=s.get(); $("fco_"+s.k).textContent=s.get(); });
+}
 function F(){
   var all=allFilters();
   if (fIdx>=all.length) fIdx=0;
@@ -998,6 +1071,17 @@ function buildSliders(){
     '<div class="sl"><label for="sl_tint">세기</label>'+
     '<input type="range" id="sl_tint" min="0" max="100" step="1">'+
     '<output id="out_tint"></output></div>';
+  $("faceSliders").innerHTML = FACE_SLIDERS.map(function(s){
+    return '<div class="sl"><label for="fc_'+s.k+'">'+s.n+'</label>'+
+      '<input type="range" id="fc_'+s.k+'" min="'+s.min+'" max="'+s.max+'" step="1">'+
+      '<output id="fco_'+s.k+'"></output></div>';
+  }).join("");
+  FACE_SLIDERS.forEach(function(s){
+    $("fc_"+s.k).addEventListener("input", function(e){
+      s.set(Number(e.target.value)); $("fco_"+s.k).textContent=e.target.value; renderCompare();
+    });
+    $("fc_"+s.k).addEventListener("change", saveConfig);
+  });
   $("fTintMode").innerHTML = BLEND_MODES.map(function(m){
     return '<option value="'+m.v+'">'+m.n+'</option>';
   }).join("");
@@ -1105,32 +1189,24 @@ function renderCompare(){
   if (!cmpFrame) return;
   var f = F(), W = cmpFrame.width, H = cmpFrame.height;
 
-  // 보정 전 — 색만 입히고 피부 보정은 빼둡니다
+  // 보정 전 — 색만 입히고 피부 보정과 얼굴 줄이기는 빼둡니다
   var plain = Object.create(null);
   for (var k in f) plain[k] = f[k];
   plain.smooth = 0;
 
-  var a = renderLook(cmpFrame, plain);
-  var b = renderLook(cmpFrame, f);
+  var a = renderLook(cmpFrame, plain, null);
+  var b = renderLook(cmpFrame, f, CFG.slim);
   $("cmpA").src = a.toDataURL("image/jpeg", 0.9);
   $("cmpB").src = b.toDataURL("image/jpeg", 0.9);
   free(a); free(b);
   $("cmpBox").hidden = false;
   $("cmpNote").hidden = false;
 }
-/* 한 장짜리 캔버스에 보정을 입힙니다. grabFull 과 같은 순서입니다. */
-function renderLook(src, f){
-  var W = src.width, H = src.height;
+/* 한 장짜리 캔버스에 보정을 입힙니다. grabFull 과 같은 함수입니다. */
+function renderLook(src, f, slim){
   var out = document.createElement("canvas");
-  out.width = W; out.height = H;
-  var ox = out.getContext("2d");
-  if (ctxFilterWorks()){
-    ox.filter = colorCss(f); ox.drawImage(src,0,0); ox.filter = "none";
-  } else {
-    ox.drawImage(src,0,0); applyMatrix(ox, W, H, f);
-  }
-  softenInto(out, out, f);
-  overlayInto(ox, W, H, f);
+  out.width = src.width; out.height = src.height;
+  drawLook(out, src, f, false, slim);
   return out;
 }
 $("cmpShot").addEventListener("click", function(){
@@ -1147,12 +1223,7 @@ $("cmpShot").addEventListener("click", function(){
   renderCompare();
 });
 
-function paintAdminLook(){
-  var box=$("lookPrevBox");
-  paintLook({base:$("pvVideo"), soft:$("pvSoft"), tint:$("pvTint"),
-             fade:$("pvFade"), vign:$("pvVign")},
-            F(), box ? (box.clientWidth||360) : 360);
-}
+function paintAdminLook(){ paintVignette($("pvVign"), F()); }
 
 /* 보정 미리보기용 카메라 */
 var pvStream=null;
@@ -1172,6 +1243,7 @@ $("pvToggle").addEventListener("click", function(){
       var v=$("pvVideo");
       v.srcObject=st;
       v.style.transform = mirrorFor() ? "scaleX(-1)" : "none";
+      startLive(v, $("pvLive"), F, function(){ return !!pvStream; }, function(){ return true; });
       $("pvOff").hidden=true;
       $("pvToggle").textContent="카메라 끄기";
       paintAdminLook();
@@ -1184,6 +1256,7 @@ function renderAdmin(){
   scanCameras();
   renderFilterList();
   renderFilterFields();
+  renderFaceSliders();
   paintAdminLook();
   renderLayoutList();
   renderLayoutFields();
@@ -1887,7 +1960,7 @@ $("admImport").addEventListener("change", function(){
         restore(e, "vData", "v");
       });
       Promise.all(jobs).then(function(){
-        CFG=data; if (!CFG.brand) CFG.brand="STUDIO 042";
+        CFG=migrate(data); if (!CFG.brand) CFG.brand="STUDIO 042";
         admIdx=0; selSlot=0; selText=0;
         return saveConfig();
       }).then(function(){
