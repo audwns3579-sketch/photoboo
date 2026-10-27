@@ -710,7 +710,10 @@ function startLive(video, canvas, look, on, guide){
       drawLook(canvas, video, look(), mirrorFor(), CFG.slim);
       if (guide() && CFG.slim.amount>0) drawSlimGuide(canvas);
     }
-    requestAnimationFrame(frame);
+    // 카메라 새 프레임마다 한 번만 그립니다. 화면 주사율(60·120Hz)대로 그리면 같은 그림을 여러 번 계산합니다.
+    // 카메라를 끄면 프레임이 안 와서 여기서 기다리고, 다시 켜면 이어서 그립니다.
+    if (video.requestVideoFrameCallback) video.requestVideoFrameCallback(frame);
+    else requestAnimationFrame(frame);
   })();
 }
 /* 손님이 얼굴을 맞출 자리. 미리보기에만 그리고 사진에는 들어가지 않습니다. */
@@ -728,6 +731,7 @@ function drawSlimGuide(cv){
 /* ── 카메라 ───────────────────────────── */
 function stopStream(){
   if (S.stream){ S.stream.getTracks().forEach(function(t){ t.stop(); }); S.stream=null; }
+  $("live").width = 0;   // 남겨두면 다음 손님이 카메라를 켤 때 앞 손님 얼굴이 잠깐 보입니다
 }
 /* 쓸 카메라를 고릅니다. 관리자가 정해둔 카메라가 없거나 빠졌으면
    기본 카메라로 돌아갑니다. */
@@ -1230,6 +1234,7 @@ var pvStream=null;
 function pvStop(){
   if (pvStream){ pvStream.getTracks().forEach(function(t){ t.stop(); }); pvStream=null; }
   $("pvVideo").srcObject=null;
+  $("pvLive").width=0;
   $("pvOff").hidden=false;
   $("pvToggle").textContent="카메라 켜기";
 }
