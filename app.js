@@ -305,13 +305,35 @@ function buildModes(){
   if (!list.length){ $("modes").innerHTML = '<p class="note">보이도록 켜둔 인화 방식이 없습니다. 관리자 화면에서 켜주세요.</p>'; return; }
   if (cur >= list.length) cur = 0;
   $("modes").innerHTML = list.map(function(L,i){
+    var look = lookOf(L);
     return '<button class="mode" data-i="'+i+'" aria-pressed="'+(i===cur)+'">'+
-      miniHtml(L, i)+
+      (L.icon ? '<img class="cam" data-cam="'+i+'" alt="">' : miniHtml(L, i))+
       '<span style="min-width:0"><span class="mode-name">'+L.name+'</span><br>'+
-      '<span class="mode-sub">'+shotCount(L)+'컷 · '+L.canvas.w+'×'+L.canvas.h+'</span></span></button>';
+      '<span class="mode-sub">'+shotCount(L)+'컷 · '+(look ? escapeHtml(look.name) : L.canvas.w+'×'+L.canvas.h)+'</span></span></button>';
   }).join("");
   paintMiniBackgrounds(list);
+  list.forEach(function(L,i){
+    if (L.icon) getImage(L.icon).then(function(b){
+      var el=document.querySelector('img[data-cam="'+i+'"]'); if (el && b) el.src=b.url;
+    });
+  });
+  syncLook();
   updateShotNote();
+}
+
+/* 카메라(인화 방식)에 필름이 정해져 있으면 그 보정을 씁니다.
+   손님이 보정을 따로 고르지 않도록 3단계의 보정 버튼을 숨깁니다. */
+function lookOf(L){ return (L && L.look) ? filterById(L.look) : null; }
+function syncLook(){
+  var look = lookOf(enabledLayouts()[cur]);
+  $("filters").hidden = !!look;
+  $("step3Title").textContent = look ? "3 / 3 — 필름 · "+look.name : "3 / 3 — 보정";
+  // 필름이 없는 인화 방식으로 돌아오면, 앞 카메라의 숨긴 필름이 남지 않게 보이는 보정으로 돌립니다
+  var id = look ? look.id
+    : (shownFilters().some(function(f){ return f.id===CFG.filter; }) ? CFG.filter : shownFilters()[0].id);
+  if (CFG.filter!==id){
+    CFG.filter = id; pressOnly($("filters"), CFG.filter); saveConfig(); applyPreviewFilter();
+  }
 }
 
 /* 인화 방식 미리보기 네모에 고른 배경과 프레임을 깔아줍니다 */
@@ -414,6 +436,7 @@ $("modes").addEventListener("click", function(e){
     x.setAttribute("aria-pressed", String(Number(x.dataset.i)===cur));
   });
   buildBgPick();
+  syncLook();
   updateShotNote();
   showStep(2);
 });
@@ -1200,6 +1223,7 @@ function renderFilterList(){
       '<span class="nm">'+f.name+'</span>'+
       '<span class="off">'+(f.enabled?'':'숨김')+'</span></button>';
   }).join("");
+  fillLookSelect();      // 보정 이름이 바뀌면 인화 방식의 필름 목록도 같이 바뀝니다
 }
 $("filterList").addEventListener("click", function(e){
   var b=e.target.closest(".lrow"); if(!b) return;
@@ -1382,7 +1406,43 @@ function renderLayoutFields(){
   $("cutColor").value = l.cut ? l.cut.color : "#D8D0CA";
   $("editNote").textContent = l.canvas.w+" × "+l.canvas.h+" px · 300dpi 기준 "+
     (l.canvas.w/300).toFixed(1)+" × "+(l.canvas.h/300).toFixed(1)+" 인치 · 촬영 "+shotCount(l)+"컷";
+  fillLookSelect();
+  var th=$("admIconThumb");
+  th.style.backgroundImage="none"; th.textContent="없음";
+  getImage(l.icon).then(function(b){
+    if (b && L()===l){ th.style.backgroundImage='url('+b.url+')'; th.textContent=""; }
+  });
 }
+/* 필름 목록 — 손님에게 숨긴 보정도 고를 수 있습니다. 카메라 전용 색감을 숨겨두고 쓸 때입니다. */
+function fillLookSelect(){
+  var l=CFG.layouts[admIdx]; if (!l) return;
+  $("admLook").innerHTML = '<option value="">손님이 고름</option>' + allFilters().map(function(f){
+    return '<option value="'+f.id+'">'+escapeHtml(f.name)+(f.enabled?'':' (숨김)')+'</option>';
+  }).join("");
+  $("admLook").value = filterById(l.look) ? l.look : "";
+}
+$("admLook").addEventListener("change", function(e){
+  L().look = e.target.value || null; saveConfig();
+});
+$("admIcon").addEventListener("change", function(){
+  var input=this, f=input.files && input.files[0]; if (!f) return;
+  if (!/^image\//.test(f.type)){ say("이미지 파일만 올릴 수 있습니다."); input.value=""; return; }
+  var l=L();
+  fitImage(f, 480, 0, true)          // 시작 화면 버튼에만 쓰므로 가로 480px 이면 충분합니다
+    .then(putImage)
+    .then(function(key){
+      var old=l.icon; l.icon=key;
+      if (old){ kvDel(old); delete imgCache[old]; }
+      return saveConfig();
+    })
+    .then(function(){ renderLayoutFields(); say("카메라 그림을 올렸습니다."); })
+    .catch(function(){ say("이미지를 읽지 못했습니다. PNG나 JPG로 저장해서 다시 올려주세요.", 5000); })
+    .then(function(){ input.value=""; });
+});
+$("admIconDel").addEventListener("click", function(){
+  var k=L().icon; if(!k){ say("올린 카메라 그림이 없습니다."); return; }
+  L().icon=null; kvDel(k); delete imgCache[k]; saveConfig(); renderLayoutFields(); say("카메라 그림을 지웠습니다.");
+});
 $("admName").addEventListener("input", function(e){
   L().name = e.target.value || "이름 없음"; renderLayoutList(); saveConfig();
 });
@@ -1449,6 +1509,7 @@ function fitImage(file, w, h, keepAlpha){
     var url = URL.createObjectURL(file);
     var im = new Image();
     im.onload = function(){
+      if (!h) h = Math.round(w * im.naturalHeight / im.naturalWidth);   // h 가 0이면 원본 비율을 지킵니다
       var c = document.createElement("canvas");
       c.width = w; c.height = h;
       var x = c.getContext("2d");
@@ -2005,7 +2066,10 @@ $("admExport").addEventListener("click", function(){
       });
     }));
   }
-  CFG.layouts.forEach(function(l,i){ embed(l.frame, out.layouts[i], "frameData"); });
+  CFG.layouts.forEach(function(l,i){
+    embed(l.frame, out.layouts[i], "frameData");
+    embed(l.icon,  out.layouts[i], "iconData");
+  });
   (CFG.backgrounds||[]).forEach(function(e,i){
     embed(e.h, out.backgrounds[i], "hData");
     embed(e.v, out.backgrounds[i], "vData");
@@ -2040,6 +2104,7 @@ $("admImport").addEventListener("change", function(){
       data.layouts.forEach(function(l){
         delete l.bgData; delete l.bg;        // 옛 파일에 있던 레이아웃별 배경
         restore(l, "frameData", "frame");
+        restore(l, "iconData", "icon");
       });
       if (!Array.isArray(data.backgrounds)) data.backgrounds=[];
       data.backgrounds.forEach(function(e){
@@ -2065,7 +2130,7 @@ $("admImport").addEventListener("change", function(){
 $("admReset").addEventListener("click", function(){
   ask("모든 인화 설정과 올린 이미지를 지우고 기본값으로 되돌릴까요?", function(){
     var keys=[];
-    CFG.layouts.forEach(function(l){ if(l.frame) keys.push(l.frame); });
+    CFG.layouts.forEach(function(l){ if(l.frame) keys.push(l.frame); if(l.icon) keys.push(l.icon); });
     (CFG.backgrounds||[]).forEach(function(e){ if(e.h) keys.push(e.h); if(e.v) keys.push(e.v); });
     Promise.all(keys.map(kvDel)).then(function(){
       imgCache={}; CFG=defaultConfig(); admIdx=0; selSlot=0; selText=0;

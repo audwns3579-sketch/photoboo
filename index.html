@@ -87,6 +87,8 @@ label.lab{display:flex;flex-direction:column;gap:5px;font-size:11px;letter-spaci
 .mode-sub{font-size:12px;color:var(--muted)}
 .mini{background:#fff;border-radius:2px;flex:none;position:relative;overflow:hidden}
 .mini i{position:absolute;background:#C9BDB4}
+/* 카메라 그림 — 올려두면 인화지 모양 대신 보입니다 */
+.cam{height:120px;width:auto;max-width:168px;object-fit:contain;flex:none}
 /* 프레임을 미리보기 위에 덮습니다 */
 .mini b{position:absolute;inset:0;background-size:100% 100%;background-repeat:no-repeat}
 .swatches{display:flex;flex-wrap:wrap;gap:9px}
@@ -274,7 +276,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;
     <div class="swatches" id="bgPick" role="group" aria-label="배경"></div>
   </div>
   <div class="field" data-step="3" hidden>
-    <p class="eyebrow">3 / 3 — 보정</p>
+    <p class="eyebrow" id="step3Title">3 / 3 — 보정</p>
     <div class="chips" id="filters" role="group" aria-label="보정"></div>
     <p class="eyebrow" style="margin-top:14px">셀프 타이머</p>
     <div class="chips" id="timers" role="group" aria-label="셀프 타이머"></div>
@@ -430,6 +432,15 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;
         <label class="lab" style="flex-direction:row;align-items:center;gap:9px;text-transform:none;letter-spacing:0;font-size:14px;color:var(--fg)">
           <input type="checkbox" id="admEnabled" style="width:auto"> 손님 화면에 보이기
         </label>
+        <label class="lab">필름 (이 인화 방식의 보정)<select id="admLook"></select></label>
+        <div class="row">
+          <span class="bgthumb" id="admIconThumb" style="background-size:contain;background-repeat:no-repeat">없음</span>
+          <label class="btn sm filepick">카메라 그림 올리기<input type="file" id="admIcon" accept="image/*"></label>
+          <button class="btn sm ghost" id="admIconDel">그림 지우기</button>
+        </div>
+        <p class="note"><b>필름</b>을 정해두면 손님이 이 인화 방식을 고를 때 그 보정이 같이 정해지고,
+        보정 고르기는 건너뜁니다. <b>카메라 그림</b>을 올리면 시작 화면에 인화지 모양 대신 그 그림이 보입니다.
+        배경이 투명한 PNG가 가장 깔끔합니다.</p>
       </div>
 
       <div class="card">
