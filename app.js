@@ -112,6 +112,9 @@ var BLEND_MODES = [
   {v:"hard-light", n:"세게"}
 ];
 var TIMERS = [3,5,10];
+/* 촬영 방식 — fixed: 칸 수만큼만 찍고 바로 합성 / pick: 여러 장 찍은 뒤 손님이 골라서 합성 */
+var SHOOT_MODES = [{id:"fixed", name:"정해진 컷만"}, {id:"pick", name:"많이 찍고 고르기"}];
+var PICK_SHOTS = 8;      // 많이 찍고 고르기에서 찍는 장 수 (칸 수가 더 많으면 칸 수만큼)
 
 /* 예전에 저장해둔 설정을 새 기본값에 맞춰 올려줍니다.
    손대지 않은 기본 레이아웃만 바꾸고, 직접 편집했거나 이미지를 올린 것은 그대로 둡니다. */
@@ -173,7 +176,7 @@ var selSlot = -1, selText = -1;
 var S = { shots:[], cancelled:false, blob:null, stream:null, facing:"user", wakeLock:null };
 
 var $ = function(id){ return document.getElementById(id); };
-var setupEl=$("setup"), shootEl=$("shoot"), resultEl=$("result"), adminEl=$("admin");
+var setupEl=$("setup"), shootEl=$("shoot"), pickEl=$("pick"), resultEl=$("result"), adminEl=$("admin");
 
 /* ── 저장소 (IndexedDB: 설정 + 이미지) ── */
 function idb(){
@@ -238,7 +241,7 @@ $("confirmYes").addEventListener("click", function(){
   var cb=confirmCb; confirmCb=null; if (cb) cb();
 });
 
-function show(el){ [setupEl,shootEl,resultEl,adminEl].forEach(function(s){ s.hidden = s!==el; });
+function show(el){ [setupEl,shootEl,pickEl,resultEl,adminEl].forEach(function(s){ s.hidden = s!==el; });
   if (el===setupEl && typeof showStep==="function") showStep(1); }
 
 function today(){
@@ -271,6 +274,9 @@ function shotCount(L){
   var m=0; L.slots.forEach(function(s){ if (s.shot+1>m) m=s.shot+1; });
   return Math.max(1,m);
 }
+function pickMode(){ return CFG.shootMode === "pick"; }
+/* 실제로 찍는 장 수. 고르기 방식이면 칸 수보다 넉넉하게 찍습니다. */
+function shootTotal(L){ return pickMode() ? Math.max(PICK_SHOTS, shotCount(L)) : shotCount(L); }
 function fontOf(t){
   return (t.font==="display")
     ? t.size+"px Anton, sans-serif"
@@ -370,9 +376,9 @@ $("bgPick").addEventListener("click", function(e){
 });
 function updateShotNote(){
   var L = enabledLayouts()[cur];
-  $("shotNote").innerHTML = L
-    ? '카메라가 먼저 켜집니다. 얼굴을 맞춘 뒤 촬영 시작을 누르면 <b>'+shotCount(L)+'컷</b>을 이어서 찍습니다.'
-    : '';
+  $("shotNote").innerHTML = !L ? '' : pickMode()
+    ? '카메라가 먼저 켜집니다. 촬영 시작을 누르면 <b>'+shootTotal(L)+'장</b>까지 이어서 찍고, 다 찍은 뒤 마음에 드는 <b>'+shotCount(L)+'장</b>을 골라 인화합니다.'
+    : '카메라가 먼저 켜집니다. 얼굴을 맞춘 뒤 촬영 시작을 누르면 <b>'+shotCount(L)+'컷</b>을 이어서 찍습니다.';
 }
 function buildChips(host, items, current, isTimer){
   host.innerHTML = items.map(function(it){
@@ -418,6 +424,10 @@ $("filters").addEventListener("click", function(e){
 $("timers").addEventListener("click", function(e){
   var b=e.target.closest(".chip"); if(!b) return;
   CFG.timer=Number(b.dataset.v); pressOnly($("timers"), CFG.timer); saveConfig();
+});
+$("shootModes").addEventListener("click", function(e){
+  var b=e.target.closest(".chip"); if(!b) return;
+  CFG.shootMode=b.dataset.v; pressOnly($("shootModes"), CFG.shootMode); saveConfig(); updateShotNote();
 });
 $("brandEdit").addEventListener("input", function(e){
   CFG.brand = e.target.value.trim() || "STUDIO 042"; saveConfig();
@@ -825,6 +835,7 @@ function countdown(sec){
   return new Promise(function(resolve){
     (function step(){
       if (S.cancelled) return resolve();
+      if (S.enough){ $("count").hidden=true; return resolve(); }   // "다 찍었어요"를 누르면 세던 것도 멈춥니다
       $("countNum").textContent=n;
       if (n<=1) $("countCue").textContent="찰칵";
       if (n<=0){ $("count").hidden=true; return resolve(); }
@@ -838,20 +849,24 @@ function flash(){
 }
 function runSession(){
   var L = enabledLayouts()[cur];
-  var total = shotCount(L);
-  S.shots=[]; S.cancelled=false; ticks(0,total);
+  var need = shotCount(L), total = shootTotal(L), pick = pickMode();
+  S.shots=[]; S.cancelled=false; S.enough=false; ticks(0,total);
   function next(i){
-    if (S.cancelled || i>=total) return Promise.resolve();
+    if (S.cancelled || S.enough || i>=total) return Promise.resolve();
     return countdown(CFG.timer).then(function(){
-      if (S.cancelled) return;
+      if (S.cancelled || S.enough) return;
       var c=grabFull();
       if (!c){ say("카메라 화면을 읽지 못했습니다."); S.cancelled=true; return; }
       S.shots.push(c); ticks(S.shots.length,total);
+      // 칸을 채울 만큼 찍었으면 그만 찍고 고르러 갈 수 있습니다
+      if (pick && S.shots.length>=need && S.shots.length<total) $("doneBtn").hidden=false;
       return flash().then(function(){ return wait(700); }).then(function(){ return next(i+1); });
     });
   }
   return next(0).then(function(){
-    if (S.cancelled || S.shots.length<total) return;
+    $("doneBtn").hidden=true;
+    if (S.cancelled || S.shots.length<need) return;
+    if (pick){ stopStream(); releaseAwake(); openPick(L, need); return; }
     return renderPrint(L, S.shots).then(function(blob){
       setResult(blob);
       freeCanvases(S.shots); S.shots=[];
@@ -912,6 +927,72 @@ function setPrintPage(L){
   el.textContent = "@page{ size:"+w+"in "+h+"in; margin:0 }";
 }
 
+/* ── 사진 고르기 ──────────────────────────
+   찍은 사진을 격자로 보여주고, 손님이 누른 순서대로 1번 칸, 2번 칸… 에 넣습니다.
+   고를 때마다 인화지를 다시 그려 왼쪽에 보여줍니다. */
+var P = { L:null, need:0, picks:[], url:null, token:0 };
+function openPick(L, need){
+  P.L=L; P.need=need; P.picks=[];
+  var s0 = L.slots[0] || {w:2,h:3};
+  $("pickGrid").style.setProperty("--ar", s0.w+" / "+s0.h);
+  $("pickGrid").innerHTML = "";
+  S.shots.forEach(function(c, i){
+    var b=document.createElement("button");
+    b.className="pk"; b.dataset.i=i; b.setAttribute("aria-pressed","false");
+    b.setAttribute("aria-label", (i+1)+"번째 사진");
+    b.appendChild(c);   // 찍은 캔버스를 그대로 씁니다. 섬네일을 따로 만들면 메모리가 두 배가 됩니다.
+    b.appendChild(document.createElement("span")).className="no";
+    $("pickGrid").appendChild(b);
+  });
+  show(pickEl);
+  refreshPick();
+}
+function refreshPick(){
+  Array.prototype.forEach.call($("pickGrid").children, function(b){
+    var at = P.picks.indexOf(Number(b.dataset.i));
+    b.setAttribute("aria-pressed", String(at>=0));
+    b.lastChild.textContent = at>=0 ? at+1 : "";
+  });
+  $("pickTitle").textContent = "사진 고르기 — "+P.picks.length+" / "+P.need;
+  $("pickDone").disabled = P.picks.length < P.need;
+  // 아직 안 고른 칸은 비워 둔 채로 그립니다
+  var shots=[]; for (var k=0;k<P.need;k++) shots.push(S.shots[P.picks[k]]);
+  var token=++P.token;
+  renderPrint(P.L, shots).then(function(blob){
+    if (token!==P.token) return;   // 빨리 여러 번 누르면 마지막 것만 보여줍니다
+    if (P.url) URL.revokeObjectURL(P.url);
+    P.url=URL.createObjectURL(blob); $("pickPrev").src=P.url;
+  });
+}
+function closePick(){
+  P.token++; $("pickGrid").innerHTML="";
+  if (P.url){ URL.revokeObjectURL(P.url); P.url=null; }
+  $("pickPrev").removeAttribute("src");
+}
+$("pickGrid").addEventListener("click", function(e){
+  var b=e.target.closest(".pk"); if(!b) return;
+  var i=Number(b.dataset.i), at=P.picks.indexOf(i);
+  if (at>=0) P.picks.splice(at,1);
+  else if (P.picks.length<P.need) P.picks.push(i);
+  else { say(P.need+"장을 다 골랐습니다. 바꾸려면 고른 사진을 한 번 더 눌러 빼주세요."); return; }
+  refreshPick();
+});
+$("pickDone").addEventListener("click", function(){
+  if (P.picks.length<P.need) return;
+  var shots=P.picks.map(function(i){ return S.shots[i]; });
+  $("pickDone").disabled=true;
+  renderPrint(P.L, shots).then(function(blob){
+    setResult(blob);
+    closePick(); freeCanvases(S.shots); S.shots=[];
+    setPrintPage(P.L); show(resultEl);
+  });
+});
+$("pickQuit").addEventListener("click", function(){
+  ask("찍은 사진을 버리고 처음으로 돌아갈까요?", function(){
+    closePick(); freeCanvases(S.shots); S.shots=[]; readyMode(true); show(setupEl);
+  });
+});
+
 /* ── 손님 버튼 ────────────────────────── */
 $("startBtn").addEventListener("click", function(){
   hush();
@@ -920,7 +1001,7 @@ $("startBtn").addEventListener("click", function(){
   var s0 = L.slots[0] || {w:2,h:3};
   $("stage").style.setProperty("--ar", s0.w+" / "+s0.h);
   $("stage").style.setProperty("--ar-num", s0.w/s0.h);
-  show(shootEl); ticks(0, shotCount(L)); applyPreviewFilter(); keepAwake();
+  show(shootEl); ticks(0, shootTotal(L)); applyPreviewFilter(); keepAwake();
   // 카메라만 켜고 기다립니다. 얼굴을 맞춘 뒤 촬영 시작을 눌러야 찍기 시작합니다.
   readyMode(true);
   openCamera()
@@ -941,8 +1022,9 @@ $("goBtn").addEventListener("click", function(){
   runSession().catch(function(){ readyMode(true); });
 });
 $("cancelBtn").addEventListener("click", function(){
-  S.cancelled=true; readyMode(true); stopStream(); releaseAwake(); show(setupEl);
+  S.cancelled=true; $("doneBtn").hidden=true; readyMode(true); stopStream(); releaseAwake(); show(setupEl);
 });
+$("doneBtn").addEventListener("click", function(){ S.enough=true; $("doneBtn").hidden=true; });
 $("flipBtn").addEventListener("click", function(){
   S.facing = S.facing==="user" ? "environment" : "user";
   openCamera().then(applyPreviewFilter).catch(function(e){ say(cameraError(e)); });
@@ -1972,6 +2054,7 @@ $("admImport").addEventListener("change", function(){
         $("brandEdit").value=CFG.brand;
         buildChips($("filters"),shownFilters(),CFG.filter,false);
         buildChips($("timers"),TIMERS,CFG.timer,true);
+      buildChips($("shootModes"),SHOOT_MODES,CFG.shootMode||"fixed",false);
         buildModes(); buildBgPick(); renderAdmin(); say("설정을 가져왔습니다.");
       });
     });
@@ -1991,6 +2074,7 @@ $("admReset").addEventListener("click", function(){
       $("brandEdit").value=CFG.brand;
       buildChips($("filters"),shownFilters(),CFG.filter,false);
       buildChips($("timers"),TIMERS,CFG.timer,true);
+      buildChips($("shootModes"),SHOOT_MODES,CFG.shootMode||"fixed",false);
       buildModes(); buildBgPick(); renderAdmin(); say("기본 설정으로 되돌렸습니다.");
     });
   });
@@ -2012,6 +2096,7 @@ kvGet("config").then(function(saved){
   buildSliders();
   buildChips($("filters"), shownFilters(), CFG.filter, false);
   buildChips($("timers"), TIMERS, CFG.timer, true);
+  buildChips($("shootModes"), SHOOT_MODES, CFG.shootMode||"fixed", false);
   buildModes();
   buildBgPick();
   showStep(1);
