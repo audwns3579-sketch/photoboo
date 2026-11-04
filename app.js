@@ -7,7 +7,7 @@
    ══════════════════════════════════════════ */
 function defaultConfig(){
   return {
-    version: 9,
+    version: 10,
     brand: "STUDIO 042",
     timer: 5,
     filter: "bright",
@@ -71,6 +71,23 @@ function defaultConfig(){
           {content:"{date}",  x:600, y:1650, size:20, font:"body",    align:"center", color:"#9A9A9A"}
         ],
         cut: { on:false, x:600, color:"#D8D0CA" }
+      },
+      /* 인스탁스 와이드 — 필름 108 × 86mm, 사진 영역 99 × 62mm 를 300dpi 로 옮겼습니다.
+         양옆 4.5mm(53), 위 6mm(71), 아래 띠 18mm(213). 사진 영역에 두 칸을 25 간격으로.
+         53 + 572 + 25 + 572 = 1222, 오른쪽 여백 54. 글자는 아래 띠 왼쪽에 붙입니다. */
+      {
+        id: "wide2", name: "인스탁스 와이드 2컷", enabled: true,
+        canvas: { w:1276, h:1016 },
+        frame: null,
+        slots: [
+          {x:53,  y:71, w:572, h:732, shot:0},
+          {x:650, y:71, w:572, h:732, shot:1}
+        ],
+        texts: [
+          {content:"{brand}", x:53, y:900, size:44, font:"display", align:"left", color:"#111111"},
+          {content:"{date}",  x:53, y:942, size:20, font:"body",    align:"left", color:"#9A9A9A"}
+        ],
+        cut: { on:false, x:638, color:"#D8D0CA" }
       }
     ]
   };
@@ -125,7 +142,11 @@ function migrate(cfg){
   if (!cfg.slim) cfg.slim = defaultConfig().slim;
   // 기본 타이머를 5초로 바꿨습니다. 옛 기본값 3초로 두었던 설정만 올려줍니다.
   if (cfg.version < 9 && cfg.timer === 3) cfg.timer = 5;
-  if (cfg.version >= 8){ cfg.version = 9; return cfg; }
+  // 인스탁스 와이드 2컷을 나중에 넣었습니다. 예전 설정에는 없으니 뒤에 붙여줍니다.
+  if (cfg.version < 10 && !cfg.layouts.some(function(l){ return l.id === "wide2"; })){
+    cfg.layouts.push(defaultConfig().layouts.filter(function(d){ return d.id === "wide2"; })[0]);
+  }
+  if (cfg.version >= 8){ cfg.version = 10; return cfg; }
 
   // 예전 보정은 이름만 있었습니다. 같은 이름의 새 보정으로 바꿔 끼웁니다.
   if (!Array.isArray(cfg.filters) || !cfg.filters.length){
@@ -164,7 +185,7 @@ function migrate(cfg){
   if (!hasPolaroid){
     cfg.layouts.push(defaultConfig().layouts.filter(function(d){ return d.id === "polaroid"; })[0]);
   }
-  cfg.version = 9;
+  cfg.version = 10;
   return cfg;
 }
 
