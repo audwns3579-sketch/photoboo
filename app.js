@@ -7,7 +7,7 @@
    ══════════════════════════════════════════ */
 function defaultConfig(){
   return {
-    version: 16,
+    version: 17,
     brand: "STUDIO 042",
     timer: 5,
     filter: "bright",
@@ -21,77 +21,6 @@ function defaultConfig(){
     backgrounds: [],     // 배경 목록 {id,name,h,v}
     bgId: null,          // 지금 고른 배경 (모든 인화 방식이 함께 씁니다)
     layouts: [
-      {
-        id: "strip4", name: "가로 4컷", enabled: true,
-        canvas: { w:1800, h:1200 },
-        frame: null,
-        slots: [
-          {x:75,  y:520, w:390, h:260, shot:0},
-          {x:495, y:520, w:390, h:260, shot:1},
-          {x:915, y:520, w:390, h:260, shot:2},
-          {x:1335,y:520, w:390, h:260, shot:3}
-        ],
-        texts: [
-          {content:"{brand}", x:900, y:400, size:76, font:"display", align:"center", color:"#111111"},
-          {content:"{date}",  x:900, y:452, size:24, font:"body",    align:"center", color:"#9A9A9A"},
-          {content:"SELF PHOTO BOOTH", x:900, y:845, size:22, font:"body", align:"center", color:"#BBBBBB"}
-        ],
-        cut: { on:false, x:900, color:"#D8D0CA" }
-      },
-      {
-        id: "twin4", name: "세로 4컷", enabled: true,
-        canvas: { w:1200, h:1800 },
-        frame: null,
-        slots: [
-          {x:170, y:80,   w:260, h:390, shot:0},
-          {x:170, y:485,  w:260, h:390, shot:1},
-          {x:170, y:890,  w:260, h:390, shot:2},
-          {x:170, y:1295, w:260, h:390, shot:3},
-          {x:770, y:80,   w:260, h:390, shot:0},
-          {x:770, y:485,  w:260, h:390, shot:1},
-          {x:770, y:890,  w:260, h:390, shot:2},
-          {x:770, y:1295, w:260, h:390, shot:3}
-        ],
-        texts: [
-          {content:"{brand}", x:300, y:1715, size:36, font:"display", align:"center", color:"#111111"},
-          {content:"{date}",  x:300, y:1758, size:19, font:"body",    align:"center", color:"#9A9A9A"},
-          {content:"{brand}", x:900, y:1715, size:36, font:"display", align:"center", color:"#111111"},
-          {content:"{date}",  x:900, y:1758, size:19, font:"body",    align:"center", color:"#9A9A9A"}
-        ],
-        cut: { on:true, x:600, color:"#D8D0CA" }
-      },
-      /* 폴라로이드 — photoshop/polaroid-4x6.jsx 와 같은 자리를 씁니다.
-         여백 90, 사진 1020 × 1275 (4:5), 아래 띠 435, 글자 색 #740A1B. */
-      {
-        id: "polaroid", name: "폴라로이드", enabled: true,
-        canvas: { w:1200, h:1800 },
-        frame: null,
-        slots: [
-          {x:90, y:90, w:1020, h:1275, shot:0}
-        ],
-        texts: [
-          {content:"{brand}", x:600, y:1600, size:60, font:"display", align:"center", color:"#740A1B"},
-          {content:"{date}",  x:600, y:1650, size:20, font:"body",    align:"center", color:"#9A9A9A"}
-        ],
-        cut: { on:false, x:600, color:"#D8D0CA" }
-      },
-      /* 인스탁스 와이드 — 필름 108 × 86mm, 사진 영역 99 × 62mm 를 300dpi 로 옮겼습니다.
-         양옆 4.5mm(53), 위 6mm(71), 아래 띠 18mm(213). 사진 영역에 두 칸을 25 간격으로.
-         53 + 572 + 25 + 572 = 1222, 오른쪽 여백 54. 글자는 아래 띠 왼쪽에 붙입니다. */
-      {
-        id: "wide2", name: "인스탁스 와이드 2컷", enabled: false,   // AirPrint 용. 와이드 링크는 아래 "인스탁스 가로·세로"
-        canvas: { w:1276, h:1016 },
-        frame: null,
-        slots: [
-          {x:53,  y:71, w:572, h:732, shot:0},
-          {x:650, y:71, w:572, h:732, shot:1}
-        ],
-        texts: [
-          {content:"{brand}", x:53, y:900, size:44, font:"display", align:"left", color:"#111111"},
-          {content:"{date}",  x:53, y:942, size:20, font:"body",    align:"left", color:"#9A9A9A"}
-        ],
-        cut: { on:false, x:638, color:"#D8D0CA" }
-      },
       /* 인스탁스 프레임 (instax:true) — 와이드 링크로 보내는 1260 × 840 그대로입니다.
          필름의 흰 테두리가 곧 액자라서 사진은 끝까지 채우고, 컷 사이에도 경계선이 없습니다(사용자 요청).
          필름 쪽으로 얇은 흰 띠(80)를 두고 이름을 아주 작게 넣습니다(MEI 부스처럼).
@@ -233,22 +162,22 @@ var PICK_SHOTS = 8;     // 많이 찍고 고르기에서 찍는 장 수 (칸 수
    손대지 않은 기본 레이아웃만 바꾸고, 직접 편집했거나 이미지를 올린 것은 그대로 둡니다. */
 function migrate(cfg){
   if (!cfg) return cfg;
+  // 예전 인화 방식(가로 4컷·세로 4컷·폴라로이드·와이드 2컷)은 쓰지 않아 지웠습니다(사용자 요청).
+  // 인스탁스 와이드 프레임 6가지만 남깁니다. 한 번만 지우니, 그 뒤 관리자에서 만든 것은 남습니다.
+  if (cfg.version < 17){
+    cfg.layouts = (cfg.layouts || []).filter(function(l){ return l.instax; });
+    if (!cfg.layouts.length) cfg.layouts = defaultConfig().layouts;
+  }
   // 잡티 흐림과 얼굴 줄이기를 나중에 넣었습니다. 없으면 기본값을 채웁니다.
   if (cfg.blurPx === undefined) cfg.blurPx = 17;
   if (!cfg.slim) cfg.slim = defaultConfig().slim;
   // 기본 타이머를 5초로 바꿨습니다. 옛 기본값 3초로 두었던 설정만 올려줍니다.
   if (cfg.version < 9 && cfg.timer === 3) cfg.timer = 5;
-  // 인스탁스 와이드 2컷을 나중에 넣었습니다. 예전 설정에는 없으니 뒤에 붙여줍니다.
-  if (cfg.version < 10 && !cfg.layouts.some(function(l){ return l.id === "wide2"; })){
-    cfg.layouts.push(defaultConfig().layouts.filter(function(d){ return d.id === "wide2"; })[0]);
-  }
   // 인스탁스 부스(설정과 와이드 프레임 6가지)를 나중에 넣었습니다.
   if (!cfg.instax) cfg.instax = defaultConfig().instax;
   if (cfg.version < 11) defaultConfig().layouts.forEach(function(d){
     if (d.instax && !cfg.layouts.some(function(l){ return l.id === d.id; })) cfg.layouts.push(d);
   });
-  // 시작 화면에 "인스탁스 가로·세로"가 생겨서, 헷갈리지 않게 예전 AirPrint 용 와이드 2컷은 숨깁니다(관리자에서 다시 켤 수 있음).
-  if (cfg.version < 12) cfg.layouts.forEach(function(l){ if (l.id === "wide2") l.enabled = false; });
   // 와이드 프레임 6가지를 경계선 없이 꽉 차게, 작은 이름 띠를 넣어 다시 그렸습니다. 프레임 이미지를 올리지 않은 것만 바꿉니다.
   if (cfg.version < 14) defaultConfig().layouts.forEach(function(d){
     if (!d.instax) return;
@@ -264,7 +193,7 @@ function migrate(cfg){
   });
   // 대기 화면에서 바로 사진 고르기(맥에서 실시간 받기)를 새로 넣었습니다. 켠 채로 시작합니다(관리자에서 끌 수 있음).
   if (cfg.version < 16 && cfg.instax && cfg.instax.live === undefined) cfg.instax.live = true;
-  if (cfg.version >= 8){ cfg.version = 16; return cfg; }
+  if (cfg.version >= 8){ cfg.version = 17; return cfg; }
 
   // 예전 보정은 이름만 있었습니다. 같은 이름의 새 보정으로 바꿔 끼웁니다.
   if (!Array.isArray(cfg.filters) || !cfg.filters.length){
@@ -273,16 +202,6 @@ function migrate(cfg){
     cfg.filter = map[cfg.filter] || "bright";
   }
 
-  if (cfg.version < 4) cfg.layouts.forEach(function(l){
-    // 잠깐 한 줄로 나갔던 세로 4컷을 두 줄로 되돌립니다.
-    var oneColumn = l.id === "twin4" && l.slots.length === 4 && !l.bg && !l.frame &&
-      l.slots.every(function(s){ return s.w === 260 && s.h === 390 && s.x === 470; });
-    if (!oneColumn) return;
-    var fresh = defaultConfig().layouts.filter(function(d){ return d.id === "twin4"; })[0];
-    l.slots = fresh.slots;
-    l.texts = fresh.texts;
-    l.cut   = fresh.cut;
-  });
   // 예전 보정에는 디테일 문턱이 없었습니다. 기본값을 채워 넣습니다.
   (cfg.filters||[]).forEach(function(f){ if (f.detail===undefined) f.detail = 70; });
   // 레이아웃마다 따로 올리던 배경을 공용 목록으로 옮깁니다
@@ -298,12 +217,7 @@ function migrate(cfg){
     delete l.bg;
   });
   if (cfg.bgId === undefined) cfg.bgId = null;
-  // 폴라로이드를 나중에 넣었습니다. 예전 설정에는 없으니 뒤에 붙여줍니다.
-  var hasPolaroid = cfg.layouts.filter(function(l){ return l.id === "polaroid"; }).length > 0;
-  if (!hasPolaroid){
-    cfg.layouts.push(defaultConfig().layouts.filter(function(d){ return d.id === "polaroid"; })[0]);
-  }
-  cfg.version = 16;
+  cfg.version = 17;
   return cfg;
 }
 
