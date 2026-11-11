@@ -114,6 +114,8 @@ label.lab{display:flex;flex-direction:column;gap:5px;font-size:11px;letter-spaci
 #video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);display:block}
 /* 실시간 미리보기 — 비디오 위에 보정한 그림을 그립니다. 비디오는 밑에서 계속 재생됩니다. */
 .live{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+/* 인스탁스 부스: 라이브뷰를 가립니다 (영상은 계속 받아야 찍히므로 display:none 대신 투명하게) */
+#shoot.blind video,#shoot.blind .live,#shoot.blind .lay{opacity:0}
 .lay{position:absolute;inset:0;pointer-events:none}
 .stage::after{content:'';position:absolute;inset:0;pointer-events:none;
   box-shadow:inset 0 0 90px rgba(0,0,0,.45)}
@@ -272,7 +274,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;
     <div class="modes" id="modes" role="group" aria-label="인화 방식"></div>
   </div>
   <div class="field" data-step="2" hidden>
-    <p class="eyebrow">2 / 3 — 배경</p>
+    <p class="eyebrow" id="step2Title">2 / 3 — 배경</p>
     <div class="swatches" id="bgPick" role="group" aria-label="배경"></div>
   </div>
   <div class="field" data-step="3" hidden>
@@ -280,7 +282,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;
     <div class="chips" id="filters" role="group" aria-label="보정"></div>
     <p class="eyebrow" style="margin-top:14px">셀프 타이머</p>
     <div class="chips" id="timers" role="group" aria-label="셀프 타이머"></div>
-    <p class="eyebrow" style="margin-top:14px">촬영 방식</p>
+    <p class="eyebrow" style="margin-top:14px" id="shootModesTitle">촬영 방식</p>
     <div class="chips" id="shootModes" role="group" aria-label="촬영 방식"></div>
   </div>
   <div class="setup-nav">
@@ -316,6 +318,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;
 <!-- 2-1. 사진 고르기 (많이 찍고 고르기) -->
 <section class="screen" id="pick" hidden>
   <p class="eyebrow" id="pickTitle">사진 고르기</p>
+  <div class="chips" id="pickFrames" role="group" aria-label="프레임" hidden style="justify-content:center"></div>
   <div class="pick-body">
     <img id="pickPrev" alt="고른 사진으로 만든 인화 미리보기">
     <div class="pick-grid" id="pickGrid" role="group" aria-label="찍은 사진"></div>
@@ -336,8 +339,8 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;
     <button class="btn" id="printBtn">인쇄</button>
     <button class="btn ghost" id="againBtn">다시 찍기</button>
   </div>
-  <p class="hint">저장을 누르면 공유 시트가 열립니다. <b>이미지 저장</b>을 고르면 사진 앱에 들어갑니다.<br>
-  인쇄 창에서는 <b>머리말·꼬리말을 끄고</b> 용지를 인화지 크기로 두세요.</p>
+  <p class="hint">저장을 누르면 공유 시트가 열립니다. <b>이미지 저장</b>을 고르면 사진 앱에 들어갑니다.<span id="resultHint"><br>
+  인쇄 창에서는 <b>머리말·꼬리말을 끄고</b> 용지를 인화지 크기로 두세요.</span></p>
 </section>
 
 <!-- 4. 관리자 -->
@@ -367,6 +370,20 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;
         </div>
         <p class="note" id="camNote">외장 카메라를 꽂았다면 여기서 골라야 포토부스가 그 카메라를 씁니다.
         이름이 안 보이면 아래 보정 미리보기에서 카메라를 한 번 켜서 권한을 허용한 뒤 다시 찾으세요.</p>
+      </div>
+
+      <div class="card">
+        <h3>인스탁스 부스</h3>
+        <label class="lab" style="flex-direction:row;align-items:center;gap:9px;text-transform:none;letter-spacing:0;font-size:14px;color:var(--fg)">
+          <input type="checkbox" id="instaxOn" style="width:auto"> 인스탁스 부스로 쓰기
+        </label>
+        <label class="lab">인화 맥 주소<input type="url" id="relayUrl" placeholder="https://studio042s-iMac.local:8443"
+               autocomplete="off" autocapitalize="off" spellcheck="false"></label>
+        <div class="row">
+          <button class="btn sm" id="relayCheck">연결 확인</button>
+        </div>
+        <p class="note" id="relayNote">켜면 라이브뷰 없이 찍고, 다 찍은 뒤 손님이 와이드 프레임과 사진을 골라
+        맥으로 인화합니다. 프레임 모양은 인화 방식 목록의 <b>와이드 …</b> 를 편집합니다.</p>
       </div>
 
       <div class="card">
