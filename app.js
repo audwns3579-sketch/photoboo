@@ -7,7 +7,7 @@
    ══════════════════════════════════════════ */
 function defaultConfig(){
   return {
-    version: 17,
+    version: 18,
     brand: "STUDIO 042",
     timer: 5,
     filter: "bright",
@@ -26,7 +26,9 @@ function defaultConfig(){
          필름 쪽으로 얇은 흰 띠(80)를 두고 이름을 아주 작게 넣습니다(MEI 부스처럼).
          필름 창이 가장자리를 조금 가립니다(긴 쪽 양끝 약 11, 짧은 쪽 양끝 약 32). 띠는 그보다 넓게 둡니다.
          가로: 사진 0~760, 아래 띠 760~840 에 이름(왼쪽 x 26, 2·4컷은 오른쪽 x 1234도), 글자 바닥 y 792.
-         세로: 왼쪽 띠 0~80, 사진 80~840. 이름은 아래에서 위로 읽게 돌려(rot -90) x 70, 줄마다 아래 끝에서 시작. */
+         세로: 왼쪽 띠 0~80, 사진 80~840. 이름은 아래에서 위로 읽게 돌려(rot -90) x 70, 아래 끝에서 시작.
+         세로 2·4컷은 문구가 둘이라 양쪽 띠로 나눕니다(사용자 요청): 왼쪽 띠 80 + 사진 80~760 + 오른쪽 띠 80,
+         오른쪽 문구는 위에서 아래로 읽게(rot 90) x 775 에서 위(y 40)부터. 오른쪽 끝 32 는 필름 창에 가려집니다. */
       {
         id: "wl1", name: "와이드 가로 1컷", enabled: true, instax: true,
         canvas: { w:1260, h:840 },
@@ -86,12 +88,12 @@ function defaultConfig(){
         canvas: { w:840, h:1260 },
         frame: null,
         slots: [
-          {x:80, y:0, w:760, h:630, shot:0},
-          {x:80, y:630, w:760, h:630, shot:1}
+          {x:80, y:0, w:680, h:630, shot:0},
+          {x:80, y:630, w:680, h:630, shot:1}
         ],
         texts: [
-          {content:"042 STUDIO  -  DAEJEON", x:70, y:615, size:20, ls:6, weight:700, font:"body", align:"left", color:"#111111", rot:-90},
-          {content:"042 STUDIO  -  DAEJEON", x:70, y:1240, size:20, ls:6, weight:700, font:"body", align:"left", color:"#111111", rot:-90}
+          {content:"042 STUDIO  -  DAEJEON", x:70, y:1240, size:20, ls:6, weight:700, font:"body", align:"left", color:"#111111", rot:-90},
+          {content:"042 STUDIO  -  DAEJEON", x:775, y:40, size:20, ls:6, weight:700, font:"body", align:"left", color:"#111111", rot:90}
         ],
         cut: { on:false, x:420, color:"#D8D0CA" }
       },
@@ -100,14 +102,14 @@ function defaultConfig(){
         canvas: { w:840, h:1260 },
         frame: null,
         slots: [
-          {x:80, y:0, w:380, h:630, shot:0},
-          {x:460, y:0, w:380, h:630, shot:1},
-          {x:80, y:630, w:380, h:630, shot:2},
-          {x:460, y:630, w:380, h:630, shot:3}
+          {x:80, y:0, w:340, h:630, shot:0},
+          {x:420, y:0, w:340, h:630, shot:1},
+          {x:80, y:630, w:340, h:630, shot:2},
+          {x:420, y:630, w:340, h:630, shot:3}
         ],
         texts: [
-          {content:"042 STUDIO  -  DAEJEON", x:70, y:615, size:20, ls:6, weight:700, font:"body", align:"left", color:"#111111", rot:-90},
-          {content:"042 STUDIO  -  DAEJEON", x:70, y:1240, size:20, ls:6, weight:700, font:"body", align:"left", color:"#111111", rot:-90}
+          {content:"042 STUDIO  -  DAEJEON", x:70, y:1240, size:20, ls:6, weight:700, font:"body", align:"left", color:"#111111", rot:-90},
+          {content:"042 STUDIO  -  DAEJEON", x:775, y:40, size:20, ls:6, weight:700, font:"body", align:"left", color:"#111111", rot:90}
         ],
         cut: { on:false, x:420, color:"#D8D0CA" }
       }
@@ -193,7 +195,16 @@ function migrate(cfg){
   });
   // 대기 화면에서 바로 사진 고르기(맥에서 실시간 받기)를 새로 넣었습니다. 켠 채로 시작합니다(관리자에서 끌 수 있음).
   if (cfg.version < 16 && cfg.instax && cfg.instax.live === undefined) cfg.instax.live = true;
-  if (cfg.version >= 8){ cfg.version = 17; return cfg; }
+  // 세로 2·4컷의 문구 두 개를 양쪽 띠로 나눴습니다. 예전 기본 모양(문구 둘이 모두 왼쪽 띠) 그대로인 것만 바꿉니다.
+  if (cfg.version < 18) defaultConfig().layouts.forEach(function(d){
+    if (d.id !== "wp2" && d.id !== "wp4") return;
+    cfg.layouts.forEach(function(l){
+      var plain = !l.frame && (l.texts || []).length === 2 &&
+        l.texts.every(function(t){ return t.rot === -90 && t.x === 70; });
+      if (l.id === d.id && plain){ l.slots = d.slots; l.texts = d.texts; }
+    });
+  });
+  if (cfg.version >= 8){ cfg.version = 18; return cfg; }
 
   // 예전 보정은 이름만 있었습니다. 같은 이름의 새 보정으로 바꿔 끼웁니다.
   if (!Array.isArray(cfg.filters) || !cfg.filters.length){
@@ -217,7 +228,7 @@ function migrate(cfg){
     delete l.bg;
   });
   if (cfg.bgId === undefined) cfg.bgId = null;
-  cfg.version = 17;
+  cfg.version = 18;
   return cfg;
 }
 
