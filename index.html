@@ -153,6 +153,29 @@ label.lab{display:flex;flex-direction:column;gap:5px;font-size:11px;letter-spaci
   box-shadow:0 18px 50px rgba(0,0,0,.6),0 0 0 1px var(--line)}
 .hint{font-size:13px;color:var(--muted);text-align:center;line-height:1.6;max-width:36ch}
 
+/* ── 인스탁스 — 미리보기를 실제 와이드 필름 모양으로 ──
+   필름 108 × 86mm, 사진 창 99 × 62mm. 가로: 양옆 4.5, 위 6, 아래 18mm.
+   세로로 들면 두꺼운 띠(18mm)가 왼쪽, 6mm 가 오른쪽. 테두리는 필름 가로 길이(--fw)에 곱해 정합니다
+   (padding % 는 부모 너비 기준이라 쓰지 않습니다).
+   프린터에 보내는 1260 × 840 은 필름 창(99:62)보다 조금 높아서 창 밖으로 나가는 위아래는 가려집니다. */
+.film{display:contents}
+.instax .film{--fw:min(46vw, 60vh*1.256);display:block;flex:none;box-sizing:border-box;width:var(--fw);
+  background:#FBFAF7;border-radius:4px;
+  padding:calc(var(--fw)*.0556) calc(var(--fw)*.0417) calc(var(--fw)*.1667);
+  box-shadow:0 18px 50px rgba(0,0,0,.6),0 0 0 1px rgba(0,0,0,.25)}
+.instax .film.v{--fw:min(38vw, 64vh*0.796);
+  padding:calc(var(--fw)*.0523) calc(var(--fw)*.0698) calc(var(--fw)*.0523) calc(var(--fw)*.2093)}
+#pick.instax #pickPrev,#result.instax #resultImg{display:block;width:100%;height:auto;max-width:none;max-height:none;
+  aspect-ratio:99/62;object-fit:cover;border-radius:0;box-shadow:none;background:#fff}
+#pick.instax .film.v #pickPrev,#result.instax .film.v #resultImg{aspect-ratio:62/99}
+#pick.instax #pickFrames .chip{min-width:72px;justify-content:center;font-size:16px}
+#result.instax #printBtn{order:-1;min-width:160px}
+#printerLine{position:fixed;right:18px;bottom:calc(14px + env(safe-area-inset-bottom,0px));margin:0;z-index:40;
+  font-size:11px;letter-spacing:.16em;color:var(--muted)}
+#printerLine::before{content:'●';margin-right:7px;color:var(--muted)}
+#printerLine.ok::before{color:#5BBF72}
+#printerLine.bad::before{color:var(--safelight)}
+
 /* ── 4. 관리자 ────────────────────────── */
 #admin{gap:0;padding:0}
 .adm-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
@@ -320,7 +343,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;
   <p class="eyebrow" id="pickTitle">사진 고르기</p>
   <div class="chips" id="pickFrames" role="group" aria-label="프레임" hidden style="justify-content:center"></div>
   <div class="pick-body">
-    <img id="pickPrev" alt="고른 사진으로 만든 인화 미리보기">
+    <div class="film" id="pickFilm"><img id="pickPrev" alt="고른 사진으로 만든 인화 미리보기"></div>
     <div class="pick-grid" id="pickGrid" role="group" aria-label="찍은 사진"></div>
   </div>
   <p class="hint">누른 순서대로 1번 칸, 2번 칸에 들어갑니다. 다시 누르면 빠집니다.</p>
@@ -333,7 +356,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;
 <!-- 3. 결과 -->
 <section class="screen" id="result" hidden>
   <p class="eyebrow">인화 미리보기</p>
-  <img id="resultImg" alt="합성된 인화지">
+  <div class="film" id="resultFilm"><img id="resultImg" alt="합성된 인화지"></div>
   <div class="row result-actions" style="justify-content:center">
     <button class="btn primary" id="saveBtn">사진 앱에 저장</button>
     <button class="btn" id="printBtn">인쇄</button>
@@ -373,17 +396,15 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;
       </div>
 
       <div class="card">
-        <h3>인스탁스 부스</h3>
-        <label class="lab" style="flex-direction:row;align-items:center;gap:9px;text-transform:none;letter-spacing:0;font-size:14px;color:var(--fg)">
-          <input type="checkbox" id="instaxOn" style="width:auto"> 인스탁스 부스로 쓰기
-        </label>
+        <h3>인스탁스</h3>
         <label class="lab">인화 맥 주소<input type="url" id="relayUrl" placeholder="https://studio042s-iMac.local:8443"
                autocomplete="off" autocapitalize="off" spellcheck="false"></label>
         <div class="row">
           <button class="btn sm" id="relayCheck">연결 확인</button>
         </div>
-        <p class="note" id="relayNote">켜면 라이브뷰 없이 찍고, 다 찍은 뒤 손님이 와이드 프레임과 사진을 골라
-        맥으로 인화합니다. 프레임 모양은 인화 방식 목록의 <b>와이드 …</b> 를 편집합니다.</p>
+        <p class="note" id="relayNote">손님이 시작 화면에서 <b>인스탁스 가로·세로</b>를 고르면 라이브뷰 없이 찍고,
+        컷 수와 사진을 골라 이 맥으로 인화합니다. 프레임 모양은 인화 방식 목록의 <b>와이드 …</b> 를 편집하고,
+        손님에게 숨기려면 그 프레임들의 <b>손님 화면에 보이기</b>를 끕니다.</p>
       </div>
 
       <div class="card">
@@ -599,6 +620,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;
 </section>
 
 <div id="msg" hidden role="status"></div>
+<p id="printerLine" hidden role="status"></p>
 
 <div id="confirm" hidden>
   <div class="cbox">

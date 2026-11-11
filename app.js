@@ -7,15 +7,15 @@
    ══════════════════════════════════════════ */
 function defaultConfig(){
   return {
-    version: 11,
+    version: 13,
     brand: "STUDIO 042",
     timer: 5,
     filter: "bright",
     blurPx: 17,          // 잡티 흐림 반지름 — 카메라 사진(긴 쪽 1600px) 기준 가우시안 px
     slim: { amount:0, x:50, y:45, size:35 },   // 얼굴 줄이기(유동화) — 세기, 가운데 위치 %, 범위 %
     cameraId: null,
-    // 인스탁스 부스 — 켜면 라이브뷰 없이 찍고, 와이드 프레임을 골라 맥(relay 주소)으로 인화합니다
-    instax: { on:false, relay:"" },
+    // 인스탁스 — 손님이 시작 화면에서 인스탁스 가로·세로를 고르면 맥(relay 주소)으로 인화합니다
+    instax: { relay:"" },
     filters: defaultFilters(),
     backgrounds: [],     // 배경 목록 {id,name,h,v}
     bgId: null,          // 지금 고른 배경 (모든 인화 방식이 함께 씁니다)
@@ -78,7 +78,7 @@ function defaultConfig(){
          양옆 4.5mm(53), 위 6mm(71), 아래 띠 18mm(213). 사진 영역에 두 칸을 25 간격으로.
          53 + 572 + 25 + 572 = 1222, 오른쪽 여백 54. 글자는 아래 띠 왼쪽에 붙입니다. */
       {
-        id: "wide2", name: "인스탁스 와이드 2컷", enabled: true,
+        id: "wide2", name: "인스탁스 와이드 2컷", enabled: false,   // AirPrint 용. 와이드 링크는 아래 "인스탁스 가로·세로"
         canvas: { w:1276, h:1016 },
         frame: null,
         slots: [
@@ -91,20 +91,19 @@ function defaultConfig(){
         ],
         cut: { on:false, x:638, color:"#D8D0CA" }
       },
-      /* 인스탁스 부스 프레임 (instax:true) — 와이드 링크로 보내는 1260 × 840 그대로입니다.
-         필름의 흰 테두리는 프린터가 아니라 필름에 있어서 여기엔 사진 영역만 그립니다.
-         프린터가 가장자리를 조금 잘라서(긴 쪽 양끝 약 11, 짧은 쪽 양끝 약 32) 여백을 그보다 크게 둡니다.
-         가로: 사진 영역 x 45~1215, y 60~720. 2컷 45+570+30+570 = 1215, 4컷 60+315+30+315 = 720.
-         세로: 사진 영역 x 60~780, y 45~1125. 2컷 45+525+30+525 = 1125, 4컷 60+345+30+345 = 780. */
+      /* 인스탁스 프레임 (instax:true) — 와이드 링크로 보내는 1260 × 840 그대로입니다.
+         필름의 흰 테두리가 곧 액자라서, 사진은 여백·글자 없이 끝까지 꽉 채웁니다(사용자 요청).
+         필름 창이 가장자리를 조금 가립니다(긴 쪽 양끝 약 11, 짧은 쪽 양끝 약 32). 컷 사이만 흰 줄 20.
+         가로: 2컷 620+20+620 = 1260, 4컷 세로 410+20+410 = 840.
+         세로: 2컷 620+20+620 = 1260, 4컷 가로 410+20+410 = 840. */
       {
         id: "wl1", name: "와이드 가로 1컷", enabled: true, instax: true,
         canvas: { w:1260, h:840 },
         frame: null,
-        slots: [ {x:45, y:60, w:1170, h:660, shot:0} ],
-        texts: [
-          {content:"{brand}", x:45,   y:785, size:32, font:"display", align:"left",  color:"#111111"},
-          {content:"{date}",  x:1215, y:785, size:20, font:"body",    align:"right", color:"#9A9A9A"}
+        slots: [
+          {x:0, y:0, w:1260, h:840, shot:0}
         ],
+        texts: [],
         cut: { on:false, x:630, color:"#D8D0CA" }
       },
       {
@@ -112,13 +111,10 @@ function defaultConfig(){
         canvas: { w:1260, h:840 },
         frame: null,
         slots: [
-          {x:45,  y:60, w:570, h:660, shot:0},
-          {x:645, y:60, w:570, h:660, shot:1}
+          {x:0, y:0, w:620, h:840, shot:0},
+          {x:640, y:0, w:620, h:840, shot:1}
         ],
-        texts: [
-          {content:"{brand}", x:45,   y:785, size:32, font:"display", align:"left",  color:"#111111"},
-          {content:"{date}",  x:1215, y:785, size:20, font:"body",    align:"right", color:"#9A9A9A"}
-        ],
+        texts: [],
         cut: { on:false, x:630, color:"#D8D0CA" }
       },
       {
@@ -126,26 +122,22 @@ function defaultConfig(){
         canvas: { w:1260, h:840 },
         frame: null,
         slots: [
-          {x:45,  y:60,  w:570, h:315, shot:0},
-          {x:645, y:60,  w:570, h:315, shot:1},
-          {x:45,  y:405, w:570, h:315, shot:2},
-          {x:645, y:405, w:570, h:315, shot:3}
+          {x:0, y:0, w:620, h:410, shot:0},
+          {x:640, y:0, w:620, h:410, shot:1},
+          {x:0, y:430, w:620, h:410, shot:2},
+          {x:640, y:430, w:620, h:410, shot:3}
         ],
-        texts: [
-          {content:"{brand}", x:45,   y:785, size:32, font:"display", align:"left",  color:"#111111"},
-          {content:"{date}",  x:1215, y:785, size:20, font:"body",    align:"right", color:"#9A9A9A"}
-        ],
+        texts: [],
         cut: { on:false, x:630, color:"#D8D0CA" }
       },
       {
         id: "wp1", name: "와이드 세로 1컷", enabled: true, instax: true,
         canvas: { w:840, h:1260 },
         frame: null,
-        slots: [ {x:60, y:45, w:720, h:1080, shot:0} ],
-        texts: [
-          {content:"{brand}", x:60,  y:1195, size:32, font:"display", align:"left",  color:"#111111"},
-          {content:"{date}",  x:780, y:1195, size:20, font:"body",    align:"right", color:"#9A9A9A"}
+        slots: [
+          {x:0, y:0, w:840, h:1260, shot:0}
         ],
+        texts: [],
         cut: { on:false, x:420, color:"#D8D0CA" }
       },
       {
@@ -153,13 +145,10 @@ function defaultConfig(){
         canvas: { w:840, h:1260 },
         frame: null,
         slots: [
-          {x:60, y:45,  w:720, h:525, shot:0},
-          {x:60, y:600, w:720, h:525, shot:1}
+          {x:0, y:0, w:840, h:620, shot:0},
+          {x:0, y:640, w:840, h:620, shot:1}
         ],
-        texts: [
-          {content:"{brand}", x:60,  y:1195, size:32, font:"display", align:"left",  color:"#111111"},
-          {content:"{date}",  x:780, y:1195, size:20, font:"body",    align:"right", color:"#9A9A9A"}
-        ],
+        texts: [],
         cut: { on:false, x:420, color:"#D8D0CA" }
       },
       {
@@ -167,15 +156,12 @@ function defaultConfig(){
         canvas: { w:840, h:1260 },
         frame: null,
         slots: [
-          {x:60,  y:45,  w:345, h:525, shot:0},
-          {x:435, y:45,  w:345, h:525, shot:1},
-          {x:60,  y:600, w:345, h:525, shot:2},
-          {x:435, y:600, w:345, h:525, shot:3}
+          {x:0, y:0, w:410, h:620, shot:0},
+          {x:430, y:0, w:410, h:620, shot:1},
+          {x:0, y:640, w:410, h:620, shot:2},
+          {x:430, y:640, w:410, h:620, shot:3}
         ],
-        texts: [
-          {content:"{brand}", x:60,  y:1195, size:32, font:"display", align:"left",  color:"#111111"},
-          {content:"{date}",  x:780, y:1195, size:20, font:"body",    align:"right", color:"#9A9A9A"}
-        ],
+        texts: [],
         cut: { on:false, x:420, color:"#D8D0CA" }
       }
     ]
@@ -240,7 +226,16 @@ function migrate(cfg){
   if (cfg.version < 11) defaultConfig().layouts.forEach(function(d){
     if (d.instax && !cfg.layouts.some(function(l){ return l.id === d.id; })) cfg.layouts.push(d);
   });
-  if (cfg.version >= 8){ cfg.version = 11; return cfg; }
+  // 시작 화면에 "인스탁스 가로·세로"가 생겨서, 헷갈리지 않게 예전 AirPrint 용 와이드 2컷은 숨깁니다(관리자에서 다시 켤 수 있음).
+  if (cfg.version < 12) cfg.layouts.forEach(function(l){ if (l.id === "wide2") l.enabled = false; });
+  // 와이드 프레임 6가지를 글자 없이 꽉 차게 다시 그렸습니다. 프레임 이미지를 올리지 않은 것만 바꿉니다.
+  if (cfg.version < 13) defaultConfig().layouts.forEach(function(d){
+    if (!d.instax) return;
+    cfg.layouts.forEach(function(l){
+      if (l.id === d.id && !l.frame){ l.canvas = d.canvas; l.slots = d.slots; l.texts = d.texts; }
+    });
+  });
+  if (cfg.version >= 8){ cfg.version = 13; return cfg; }
 
   // 예전 보정은 이름만 있었습니다. 같은 이름의 새 보정으로 바꿔 끼웁니다.
   if (!Array.isArray(cfg.filters) || !cfg.filters.length){
@@ -279,7 +274,7 @@ function migrate(cfg){
   if (!hasPolaroid){
     cfg.layouts.push(defaultConfig().layouts.filter(function(d){ return d.id === "polaroid"; })[0]);
   }
-  cfg.version = 11;
+  cfg.version = 13;
   return cfg;
 }
 
@@ -358,17 +353,31 @@ $("confirmYes").addEventListener("click", function(){
 
 function show(el){ [setupEl,shootEl,pickEl,resultEl,adminEl].forEach(function(s){ s.hidden = s!==el; });
   if (el===setupEl && typeof showStep==="function") showStep(1);
+  // 인스탁스는 고르기·결과 화면을 필름 모양으로 보여주고, 아래에 프린터 상태를 띄웁니다
+  var film = instaxOn() && (el===pickEl || el===resultEl);
+  pickEl.classList.toggle("instax", film); resultEl.classList.toggle("instax", film);
+  $("printerLine").hidden = !film || !relayUrl();
   if (el===resultEl) syncPrintBtn(); }
+/* 미리보기 필름 방향 — 세로 프레임이면 두꺼운 띠가 옆으로 갑니다 */
+function setFilm(L){
+  var v = !!L && !isLandscape(L);
+  $("pickFilm").classList.toggle("v", v); $("resultFilm").classList.toggle("v", v);
+}
 
 function today(){
   var d=new Date(), p=function(n){ return String(n).padStart(2,"0"); };
   return d.getFullYear()+"."+p(d.getMonth()+1)+"."+p(d.getDate());
 }
-/* 인스탁스 부스를 켜면 손님은 와이드 프레임(instax:true)만, 끄면 나머지만 봅니다 */
-function instaxOn(){ return !!(CFG.instax && CFG.instax.on); }
-function enabledLayouts(){
-  return CFG.layouts.filter(function(l){ return l.enabled && !!l.instax === instaxOn(); });
+/* 시작 화면에서 손님이 인스탁스 가로("h")·세로("v")를 고르면 그 방향의 와이드 프레임(instax:true)만,
+   다른 인화 방식을 고르면 나머지만 씁니다. cur 는 지금 목록 안의 번호입니다. */
+var instaxOrient = null;
+function instaxOn(){ return !!instaxOrient; }
+function isLandscape(l){ return l.canvas.w >= l.canvas.h; }
+function instaxFrames(o){
+  return CFG.layouts.filter(function(l){ return l.enabled && l.instax && isLandscape(l) === (o === "h"); });
 }
+function normalLayouts(){ return CFG.layouts.filter(function(l){ return l.enabled && !l.instax; }); }
+function enabledLayouts(){ return instaxOn() ? instaxFrames(instaxOrient) : normalLayouts(); }
 
 /* ── 배경 목록 ─────────────────────────────
    배경 하나가 가로(h)·세로(v) 두 장을 갖습니다.
@@ -424,16 +433,29 @@ function miniHtml(L, idx){
   });
   return html+'<b data-minifr="'+idx+'"></b></span>';
 }
+/* 인스탁스 와이드 필름 108 × 86mm 에 사진 창 99 × 62mm. 세로로 들면 두꺼운 띠(18mm)가 왼쪽입니다. */
+var FILM_MINI = {
+  h: { canvas:{w:1080, h:860}, slots:[{x:45,  y:60, w:990, h:620}] },
+  v: { canvas:{w:860, h:1080}, slots:[{x:180, y:45, w:620, h:990}] }
+};
 function buildModes(){
-  var list = enabledLayouts();
-  if (!list.length){ $("modes").innerHTML = '<p class="note">보이도록 켜둔 인화 방식이 없습니다. 관리자 화면에서 켜주세요.</p>'; return; }
-  if (cur >= list.length) cur = 0;
+  var list = normalLayouts();
+  var films = ["h","v"].filter(function(o){ return instaxFrames(o).length; });
+  if (!list.length && !films.length){ $("modes").innerHTML = '<p class="note">보이도록 켜둔 인화 방식이 없습니다. 관리자 화면에서 켜주세요.</p>'; return; }
+  if (instaxOrient && films.indexOf(instaxOrient) < 0) instaxOrient = null;
+  if (!instaxOn() && !list.length) instaxOrient = films[0];
+  if (cur >= enabledLayouts().length) cur = 0;
   $("modes").innerHTML = list.map(function(L,i){
     var look = lookOf(L);
-    return '<button class="mode" data-i="'+i+'" aria-pressed="'+(i===cur)+'">'+
+    return '<button class="mode" data-i="'+i+'" aria-pressed="'+(!instaxOn() && i===cur)+'">'+
       (L.icon ? '<img class="cam" data-cam="'+i+'" alt="">' : miniHtml(L, i))+
       '<span style="min-width:0"><span class="mode-name">'+L.name+'</span><br>'+
       '<span class="mode-sub">'+shotCount(L)+'컷 · '+(look ? escapeHtml(look.name) : L.canvas.w+'×'+L.canvas.h)+'</span></span></button>';
+  }).join("") + films.map(function(o){
+    var cuts = instaxFrames(o).map(shotCount).join("·");
+    return '<button class="mode" data-o="'+o+'" aria-pressed="'+(instaxOrient===o)+'">'+miniHtml(FILM_MINI[o], o)+
+      '<span style="min-width:0"><span class="mode-name">인스탁스 '+(o==="h" ? "가로" : "세로")+'</span><br>'+
+      '<span class="mode-sub">와이드 필름 · 찍고 나서 '+cuts+'컷 고르기</span></span></button>';
   }).join("");
   paintMiniBackgrounds(list);
   list.forEach(function(L,i){
@@ -451,8 +473,7 @@ function lookOf(L){ return (L && L.look) ? filterById(L.look) : null; }
 function syncLook(){
   var look = lookOf(enabledLayouts()[cur]);
   $("filters").hidden = !!look;
-  var no = instaxOn() ? "2 / 2" : "3 / 3";
-  $("step3Title").textContent = look ? no+" — 필름 · "+look.name : no+" — 보정";
+  $("step3Title").textContent = look ? "3 / 3 — 필름 · "+look.name : "3 / 3 — 보정";
   // 필름이 없는 인화 방식으로 돌아오면, 앞 카메라의 숨긴 필름이 남지 않게 보이는 보정으로 돌립니다
   var id = look ? look.id
     : (shownFilters().some(function(f){ return f.id===CFG.filter; }) ? CFG.filter : shownFilters()[0].id);
@@ -542,17 +563,15 @@ function pressOnly(host, value){
 }
 
 /* 시작 화면은 한 번에 한 가지만 고르게 합니다: 1 인화 방식 → 2 배경 → 3 보정
-   인스탁스 부스는 프레임을 찍은 뒤에 고르니 1단계를 건너뜁니다. */
+   인스탁스는 늘 많이 찍고 고르니 촬영 방식 버튼을 숨깁니다. */
 var step = 1;
 function showStep(n){
-  var first = instaxOn() ? 2 : 1;
-  step = Math.min(3, Math.max(first, n));
+  step = Math.min(3, Math.max(1, n));
   Array.prototype.forEach.call(document.querySelectorAll('#setup [data-step]'), function(el){
     el.hidden = Number(el.dataset.step) !== step;
   });
-  $("step2Title").textContent = instaxOn() ? "1 / 2 — 배경" : "2 / 3 — 배경";
   $("shootModes").hidden = $("shootModesTitle").hidden = instaxOn();
-  $("backBtn").hidden  = step === first;
+  $("backBtn").hidden  = step === 1;
   $("nextBtn").hidden  = step === 3;
   $("startBtn").hidden = step !== 3;
   $("shotNote").hidden = step !== 3;
@@ -562,9 +581,10 @@ $("nextBtn").addEventListener("click", function(){ showStep(step+1); });
 
 $("modes").addEventListener("click", function(e){
   var b=e.target.closest(".mode"); if(!b) return;
-  cur = Number(b.dataset.i);
+  instaxOrient = b.dataset.o || null;
+  cur = instaxOn() ? 0 : Number(b.dataset.i);
   Array.prototype.forEach.call($("modes").children, function(x){
-    x.setAttribute("aria-pressed", String(Number(x.dataset.i)===cur));
+    x.setAttribute("aria-pressed", String(x === b));
   });
   buildBgPick();
   syncLook();
@@ -1090,7 +1110,10 @@ function openPick(L, need){
   setPickAr();
   // 인스탁스 부스는 여기서 프레임도 고릅니다
   $("pickFrames").hidden = !instaxOn();
-  if (instaxOn()) buildChips($("pickFrames"), enabledLayouts().map(function(f, i){ return {id:i, name:f.name}; }), cur, false);
+  if (instaxOn()){
+    buildChips($("pickFrames"), enabledLayouts().map(function(f, i){ return {id:i, name:shotCount(f)+"컷"}; }), cur, false);
+    printerStatus();
+  }
   $("pickGrid").innerHTML = "";
   S.shots.forEach(function(c, i){
     var b=document.createElement("button");
@@ -1109,7 +1132,7 @@ function refreshPick(){
     b.setAttribute("aria-pressed", String(at>=0));
     b.lastChild.textContent = at>=0 ? at+1 : "";
   });
-  $("pickTitle").textContent = (instaxOn() ? "프레임과 사진 고르기 — " : "사진 고르기 — ")+P.picks.length+" / "+P.need;
+  $("pickTitle").textContent = (instaxOn() ? "컷 수와 사진 고르기 — " : "사진 고르기 — ")+P.picks.length+" / "+P.need;
   $("pickDone").disabled = P.picks.length < P.need;
   // 아직 안 고른 칸은 비워 둔 채로 그립니다
   var shots=[]; for (var k=0;k<P.need;k++) shots.push(S.shots[P.picks[k]]);
@@ -1136,6 +1159,7 @@ $("pickGrid").addEventListener("click", function(e){
 function setPickAr(){
   var s0 = P.L.slots[0] || {w:2,h:3};
   $("pickGrid").style.setProperty("--ar", s0.w+" / "+s0.h);
+  setFilm(P.L);
 }
 /* 프레임을 바꾸면 칸 수가 달라집니다. 넘치는 고른 사진은 뒤에서부터 뺍니다. */
 $("pickFrames").addEventListener("click", function(e){
@@ -1213,7 +1237,29 @@ function syncPrintBtn(){
   var b=$("printBtn");
   b.textContent = !instaxOn() ? "인쇄" : S.printed ? "인화했습니다" : "인화";
   b.disabled = instaxOn() && (S.printing || S.printed);
+  // 인스탁스는 인화가 주인공입니다. 버튼을 앞으로 빼고 강조합니다.
+  b.classList.toggle("primary", instaxOn());
+  $("saveBtn").classList.toggle("primary", !instaxOn());
   $("resultHint").hidden = instaxOn();
+}
+/* 프린터 상태 한 줄 — 남은 필름과 배터리. 맥을 거쳐 블루투스로 묻습니다(몇 초 걸립니다). */
+function fetchStatus(){
+  return fetch(relayUrl()+"/status").then(function(r){ return r.json(); }).then(function(j){
+    if (!j.ok) throw new Error(j.error || "프린터를 찾지 못했습니다.");
+    return j;
+  });
+}
+function printerStatus(){
+  var el=$("printerLine");
+  if (!relayUrl()) return;
+  el.className = ""; el.textContent = "프린터 확인 중";
+  fetchStatus().then(function(j){
+    var p = j.printer || {};
+    el.className = "ok";
+    el.textContent = p.film_remaining !== undefined
+      ? "프린터 준비 · 남은 필름 "+p.film_remaining+"장 · 배터리 "+p.battery+"%"
+      : "프린터 준비";
+  }).catch(function(){ el.className = "bad"; el.textContent = "프린터 연결 안 됨"; });
 }
 function printInstax(){
   if (!S.blob || S.printing || S.printed) return;
@@ -1227,6 +1273,7 @@ function printInstax(){
       // 한 번 뽑으면 다시 찍기 전까지 막습니다. 필름을 아끼려는 것입니다.
       S.printed = true;
       say("사진이 나오고 있습니다. 색이 다 올라올 때까지 1~2분 기다려 주세요.", 8000);
+      printerStatus();   // 남은 필름 수를 새로 읽습니다
     })
     .catch(function(e){
       say(e instanceof TypeError
@@ -1274,10 +1321,7 @@ $("admClose").addEventListener("click", function(){
   });
 });
 
-/* ── 인스탁스 부스 ────────────────────── */
-$("instaxOn").addEventListener("change", function(e){
-  CFG.instax.on = e.target.checked; cur = 0; saveConfig();
-});
+/* ── 인스탁스 ─────────────────────────── */
 $("relayUrl").addEventListener("input", function(e){
   CFG.instax.relay = e.target.value.trim(); saveConfig();
 });
@@ -1285,8 +1329,7 @@ $("relayCheck").addEventListener("click", function(){
   var note=$("relayNote"), url=relayUrl();
   if (!url){ note.textContent = "인화 맥 주소를 먼저 넣어주세요."; return; }
   note.textContent = "프린터를 찾는 중입니다… (10초쯤 걸립니다)";
-  fetch(url+"/status").then(function(r){ return r.json(); }).then(function(j){
-    if (!j.ok) throw new Error(j.error || "프린터를 찾지 못했습니다.");
+  fetchStatus().then(function(j){
     var p = j.printer;
     note.textContent = j.dryRun ? "맥과 연결됐습니다. (인화 서버가 시험 모드입니다)"
       : (p && p.model) ? "연결됐습니다. "+p.model+" · 배터리 "+p.battery+"% · 남은 필름 "+p.film_remaining+"장"
@@ -1568,7 +1611,6 @@ $("pvToggle").addEventListener("click", function(){
 
 function renderAdmin(){
   scanCameras();
-  $("instaxOn").checked = instaxOn();
   $("relayUrl").value = (CFG.instax && CFG.instax.relay) || "";
   renderFilterList();
   renderFilterFields();
