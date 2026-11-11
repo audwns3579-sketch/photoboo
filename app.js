@@ -1117,6 +1117,7 @@ function openPick(L, need, imported){
   // 인스탁스 부스는 여기서 프레임도 고릅니다. 불러온 사진은 가로·세로도 여기서 고릅니다.
   $("pickFrames").hidden = !instaxOn();
   $("pickOrient").hidden = !P.imported || orientFixed;
+  pickEl.classList.toggle("withOrient", !$("pickOrient").hidden);   // 가로·세로 버튼이 있으면 필름을 조금 작게(자리 확보)
   if (P.imported && !orientFixed) buildChips($("pickOrient"), instaxOrients().map(function(o){ return {id:o, name:o==="h" ? "가로" : "세로"}; }), instaxOrient, false);
   if (instaxOn()){ pickChips(); printerStatus(); }
   $("pickGrid").innerHTML = "";
@@ -1159,7 +1160,9 @@ $("pickGrid").addEventListener("click", function(e){
 });
 function setPickAr(){
   var s0 = P.L.slots[0] || {w:2,h:3};
-  $("pickGrid").style.setProperty("--ar", s0.w+" / "+s0.h);
+  // 인스탁스는 컷 수와 상관없이 사진 목록 크기를 같게 합니다(가로 3:2, 세로 2:3). 칸 모양으로 잘리는 건 오른쪽 미리보기가 보여 줍니다.
+  var ar = instaxOn() ? (isLandscape(P.L) ? "3 / 2" : "2 / 3") : (s0.w+" / "+s0.h);
+  $("pickGrid").style.setProperty("--ar", ar);
   setFilm(P.L);
 }
 /* 프레임을 바꾸면 칸 수가 달라집니다. 넘치는 고른 사진은 뒤에서부터 뺍니다. */
