@@ -319,8 +319,7 @@ $("confirmYes").addEventListener("click", function(){
 
 function show(el){ [setupEl,shootEl,pickEl,resultEl,adminEl].forEach(function(s){ s.hidden = s!==el; });
   if (el===setupEl && typeof showStep==="function"){
-    showStep(1);
-    $("attractBrand").textContent = CFG.brand; $("attract").hidden = false;
+    showStep(1); orientFixed = false; syncIdle();
   }
   // 인스탁스는 고르기·결과 화면을 필름 모양으로 보여주고, 아래에 프린터 상태를 띄웁니다
   var film = instaxOn() && (el===pickEl || el===resultEl);
@@ -411,7 +410,7 @@ function buildModes(){
   var list = normalLayouts();
   var films = ["h","v"].filter(function(o){ return instaxFrames(o).length; });
   if (!list.length && !films.length){ $("modes").innerHTML = '<p class="note">보이도록 켜둔 인화 방식이 없습니다. 관리자 화면에서 켜주세요.</p>'; return; }
-  $("importBtn").hidden = !films.length;
+  syncIdle();
   if (instaxOrient && films.indexOf(instaxOrient) < 0) instaxOrient = null;
   if (!instaxOn() && !list.length) instaxOrient = films[0];
   if (cur >= enabledLayouts().length) cur = 0;
@@ -435,6 +434,7 @@ function buildModes(){
   });
   syncLook();
   updateShotNote();
+  syncIdle();
 }
 
 /* 카메라(인화 방식)에 필름이 정해져 있으면 그 보정을 씁니다.
@@ -549,26 +549,20 @@ function showStep(n){
   $("shotNote").hidden = step !== 3;
 }
 $("backBtn").addEventListener("click", function(){ showStep(step-1); });
-/* 대기 화면을 누르면: 맥에서 실시간으로 받는 중이면 바로 사진 고르기, 아니면 시작 화면 1단계 */
-$("attract").addEventListener("click", function(){
-  if (longPressed) return;
-  $("attract").hidden = true;
-  if (liveOn()) openLive(); else showStep(1);
-});
-/* 관리자 화면은 대기 화면의 큰 이름을 0.75초 길게 눌러 엽니다(시작 화면 이름도 같습니다) */
-(function(){
-  var t = null, el = $("attractBrand");
-  el.addEventListener("pointerdown", function(){
-    t = setTimeout(function(){
-      longPressed = true; setTimeout(function(){ longPressed = false; }, 1000);   // 손을 뗄 때 눌림으로 치지 않게
-      openAdmin();
-    }, 750);
-  });
-  ["pointerup","pointerleave","pointercancel"].forEach(function(ev){ el.addEventListener(ev, function(){ clearTimeout(t); }); });
-})();
+/* 첫 화면(대기 화면)은 가로·세로 고르기입니다(사용자 요청). 맥에서 실시간으로 받는 중이면 카드를 누르는 순간 그 방향으로
+   바로 사진 고르기 화면으로 가고(가로·세로 버튼은 고르기 화면에 두지 않습니다), 아니면 예전처럼 배경·보정·카메라 순서로 갑니다.
+   관리자 화면은 이 화면 맨 위 이름 글씨를 길게 눌러 엽니다. */
+function syncIdle(){
+  var live = liveOn();
+  $("importBtn").hidden = live || !instaxOrients().length;   // 실시간 받기 중에는 고르기 화면의 "사진 앱에서 고르기"가 대신합니다
+  $("step1Title").textContent = live ? "가로·세로를 골라주세요" : "어떤 사진을 뽑을까요?";
+  // 실시간 받기에서는 카드가 곧 "고르기" 버튼이라, 이미 골라진 것처럼 테두리가 미리 들어와 있지 않게 합니다
+  if (live) Array.prototype.forEach.call($("modes").children, function(x){ x.setAttribute("aria-pressed", "false"); });
+}
 
 $("modes").addEventListener("click", function(e){
   var b=e.target.closest(".mode"); if(!b) return;
+  if (b.dataset.o && liveOn()){ openLive(b.dataset.o); return; }
   instaxOrient = b.dataset.o || null;
   cur = instaxOn() ? 0 : Number(b.dataset.i);
   Array.prototype.forEach.call($("modes").children, function(x){
@@ -1100,7 +1094,7 @@ function setPrintPage(L){
 var P = { L:null, need:0, picks:[], url:null, token:0,
           live:false, liveId:0, timer:null, seen:{}, fails:0, err:"", maxStamp:0 };
 var liveSession = false;   // 이번 손님이 맥에서 실시간으로 받은 사진으로 만들고 있는지
-var longPressed = false;
+var orientFixed = false;   // 가로·세로를 첫 화면에서 골랐는지(그러면 고르기 화면에 가로·세로 버튼을 안 둡니다)
 function addPickThumb(c, i){
   var b=document.createElement("button");
   b.className="pk"; b.dataset.i=i; b.setAttribute("aria-pressed","false");
@@ -1122,8 +1116,8 @@ function openPick(L, need, imported){
   setPickAr();
   // 인스탁스 부스는 여기서 프레임도 고릅니다. 불러온 사진은 가로·세로도 여기서 고릅니다.
   $("pickFrames").hidden = !instaxOn();
-  $("pickOrient").hidden = !P.imported;
-  if (P.imported) buildChips($("pickOrient"), instaxOrients().map(function(o){ return {id:o, name:o==="h" ? "가로" : "세로"}; }), instaxOrient, false);
+  $("pickOrient").hidden = !P.imported || orientFixed;
+  if (P.imported && !orientFixed) buildChips($("pickOrient"), instaxOrients().map(function(o){ return {id:o, name:o==="h" ? "가로" : "세로"}; }), instaxOrient, false);
   if (instaxOn()){ pickChips(); printerStatus(); }
   $("pickGrid").innerHTML = "";
   S.shots.forEach(function(c, i){ addPickThumb(c, i); });
@@ -1236,12 +1230,12 @@ function liveTick(){
   }).catch(function(e){ if (id === P.liveId){ P.fails++; P.err = (e && e.message) || ""; liveNote(); } })
     .then(function(){ if (id === P.liveId) P.timer = setTimeout(liveTick, LIVE_MS); });
 }
-function openLive(){
+function openLive(o){
   liveStop();
   freeCanvases(S.shots); S.shots = [];
-  instaxOrient = instaxOrients()[0]; cur = 0;
+  instaxOrient = (o && instaxOrients().indexOf(o) >= 0) ? o : instaxOrients()[0]; cur = 0;
   var L0 = enabledLayouts()[0];
-  liveSession = true;
+  liveSession = true; orientFixed = true;   // 가로·세로는 첫 화면에서 골랐습니다
   openPick(L0, shotCount(L0), true);
   P.live = true; P.seen = {}; P.fails = 0; P.maxStamp = 0;
   $("pickFromPhotos").hidden = false;
@@ -1290,7 +1284,7 @@ $("importFile").addEventListener("change", function(e){
   }, Promise.resolve()).then(function(){
     hush();
     if (!S.shots.length){ say("사진을 읽지 못했습니다. 다시 골라주세요.", 5000); return; }
-    instaxOrient = instaxOrients()[0]; cur = 0;
+    if (!orientFixed || !instaxOn()) instaxOrient = instaxOrients()[0]; cur = 0;
     var L0 = enabledLayouts()[0];
     openPick(L0, shotCount(L0), true);
     if (cut) say("한 번에 "+IMPORT_MAX+"장까지만 불러옵니다. 앞의 "+IMPORT_MAX+"장을 썼습니다.", 6000);
@@ -2538,7 +2532,6 @@ kvGet("config").then(function(saved){
   if (!filterById(CFG.filter) || shownFilters().map(function(f){return f.id;}).indexOf(CFG.filter)<0)
     CFG.filter = shownFilters()[0].id;
   $("brandEdit").value = CFG.brand;
-  $("attractBrand").textContent = CFG.brand;
   buildSliders();
   buildChips($("filters"), shownFilters(), CFG.filter, false);
   buildChips($("timers"), TIMERS, CFG.timer, true);
