@@ -113,10 +113,7 @@ label.lab{display:flex;flex-direction:column;gap:5px;font-size:11px;letter-spaci
   box-shadow:0 0 0 1px var(--line);isolation:isolate}
 #video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);display:block}
 /* 실시간 미리보기 — 비디오 위에 보정한 그림을 그립니다. 비디오는 밑에서 계속 재생됩니다. */
-.live{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
-/* 인스탁스 부스: 라이브뷰를 가립니다 (영상은 계속 받아야 찍히므로 display:none 대신 투명하게) */
-#shoot.blind video,#shoot.blind .live,#shoot.blind .lay{opacity:0}
-.lay{position:absolute;inset:0;pointer-events:none}
+.live{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}.lay{position:absolute;inset:0;pointer-events:none}
 .stage::after{content:'';position:absolute;inset:0;pointer-events:none;
   box-shadow:inset 0 0 90px rgba(0,0,0,.45)}
 #flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;

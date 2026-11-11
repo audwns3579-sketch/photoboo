@@ -545,7 +545,7 @@ $("bgPick").addEventListener("click", function(e){
 function updateShotNote(){
   var L = enabledLayouts()[cur];
   $("shotNote").innerHTML = !L ? '' : instaxOn()
-    ? '촬영 시작을 누르면 화면 없이 <b>'+shootTotal(L)+'장</b>을 이어서 찍습니다. 렌즈를 봐 주세요. 다 찍은 뒤 프레임과 사진을 골라 인화합니다.'
+    ? '카메라가 먼저 켜집니다. 촬영 시작을 누르면 <b>'+shootTotal(L)+'장</b>을 이어서 찍고, 다 찍은 뒤 컷 수와 사진을 골라 인스탁스로 인화합니다.'
     : pickMode()
     ? '카메라가 먼저 켜집니다. 촬영 시작을 누르면 <b>'+shootTotal(L)+'장</b>까지 이어서 찍고, 다 찍은 뒤 마음에 드는 <b>'+shotCount(L)+'장</b>을 골라 인화합니다.'
     : '카메라가 먼저 켜집니다. 얼굴을 맞춘 뒤 촬영 시작을 누르면 <b>'+shotCount(L)+'컷</b>을 이어서 찍습니다.';
@@ -1195,9 +1195,6 @@ $("startBtn").addEventListener("click", function(){
   var s0 = L.slots[0] || {w:2,h:3};
   $("stage").style.setProperty("--ar", s0.w+" / "+s0.h);
   $("stage").style.setProperty("--ar-num", s0.w/s0.h);
-  // 인스탁스 부스는 라이브뷰를 가립니다. 카메라는 켜져 있고 화면에만 안 보입니다.
-  shootEl.classList.toggle("blind", instaxOn());
-  $("shootHint").textContent = instaxOn() ? "렌즈를 보고 촬영 시작을 누르세요" : "얼굴을 맞추고 촬영 시작을 누르세요";
   show(shootEl); ticks(0, shootTotal(L)); applyPreviewFilter(); keepAwake();
   // 카메라만 켜고 기다립니다. 얼굴을 맞춘 뒤 촬영 시작을 눌러야 찍기 시작합니다.
   readyMode(true);
@@ -1264,7 +1261,7 @@ function printerStatus(){
 function printInstax(){
   if (!S.blob || S.printing || S.printed) return;
   var url = relayUrl();
-  if (!url){ say("관리자 화면의 인스탁스 부스에 인화 맥 주소를 넣어주세요.", 6000); return; }
+  if (!url){ say("관리자 화면의 인스탁스 칸에 인화 맥 주소를 넣어주세요.", 6000); return; }
   S.printing = true; syncPrintBtn(); say("인화하는 중입니다…", 0);
   fetch(url+"/print", { method:"POST", headers:{"Content-Type":"image/jpeg"}, body:S.blob })
     .then(function(r){ return r.json(); })
