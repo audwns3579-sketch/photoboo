@@ -1161,7 +1161,7 @@ function setPrintPage(L){
    찍은 사진을 격자로 보여주고, 손님이 누른 순서대로 1번 칸, 2번 칸… 에 넣습니다.
    고를 때마다 인화지를 다시 그려 왼쪽에 보여줍니다. */
 var P = { L:null, need:0, picks:[], url:null, token:0,
-          live:false, liveId:0, timer:null, seen:{}, fails:0, maxStamp:0 };
+          live:false, liveId:0, timer:null, seen:{}, fails:0, err:"", maxStamp:0 };
 var liveSession = false;   // 이번 손님이 맥에서 실시간으로 받은 사진으로 만들고 있는지
 var longPressed = false;
 function addPickThumb(c, i){
@@ -1262,7 +1262,7 @@ function liveNote(){
   var el = $("pickEmpty");
   el.hidden = !P.live || S.shots.length > 0;
   el.textContent = P.fails > 1
-    ? "맥과 연결되지 않았습니다. 맥에서 인화 서버가 켜져 있는지 확인해 주세요."
+    ? "맥과 연결되지 않았습니다. 맥에서 인화 서버가 켜져 있는지 확인해 주세요.\n("+relayUrl()+(P.err ? " · "+P.err : "")+")"
     : "사진을 기다리는 중입니다. 촬영하면 여기에 나타납니다.";
 }
 function liveGet(url, p, id){
@@ -1286,14 +1286,14 @@ function liveTick(){
   var id = P.liveId, url = relayUrl();
   fetch(url+"/photos").then(function(r){ return r.json(); }).then(function(j){
     if (id !== P.liveId) return;
-    if (!j.ok) throw new Error("photos");
+    if (!j.ok) throw new Error(j.error || "응답이 이상합니다");
     P.fails = 0; liveNote();
     var fresh = (j.photos || []).filter(function(p){ return !P.seen[p.name+"@"+p.stamp]; });
     // 한 장씩 차례로 받아야 큰 사진이 한꺼번에 메모리에 올라가지 않습니다
     return fresh.reduce(function(pr, p){
       return pr.then(function(){ return (id === P.liveId && S.shots.length < IMPORT_MAX) ? liveGet(url, p, id) : null; });
     }, Promise.resolve());
-  }).catch(function(){ if (id === P.liveId){ P.fails++; liveNote(); } })
+  }).catch(function(e){ if (id === P.liveId){ P.fails++; P.err = (e && e.message) || ""; liveNote(); } })
     .then(function(){ if (id === P.liveId) P.timer = setTimeout(liveTick, LIVE_MS); });
 }
 function openLive(){

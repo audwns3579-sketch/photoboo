@@ -33,7 +33,7 @@ https://audwns3579-sketch.github.io/photoboo/
 
 ### 고친 뒤 올리기
 
-1. `sw.js` 의 `CACHE` 번호를 올립니다 (지금 `booth-v29` → `booth-v30`).
+1. `sw.js` 의 `CACHE` 번호를 올립니다 (지금 `booth-v30` → `booth-v31`).
    이걸 안 올리면 아이패드가 캐시에 있는 옛날 파일을 계속 씁니다.
 2. 이 폴더에서 아래 세 줄을 실행합니다.
 
