@@ -7,7 +7,7 @@
    ══════════════════════════════════════════ */
 function defaultConfig(){
   return {
-    version: 13,
+    version: 14,
     brand: "STUDIO 042",
     timer: 5,
     filter: "bright",
@@ -92,18 +92,21 @@ function defaultConfig(){
         cut: { on:false, x:638, color:"#D8D0CA" }
       },
       /* 인스탁스 프레임 (instax:true) — 와이드 링크로 보내는 1260 × 840 그대로입니다.
-         필름의 흰 테두리가 곧 액자라서, 사진은 여백·글자 없이 끝까지 꽉 채웁니다(사용자 요청).
-         필름 창이 가장자리를 조금 가립니다(긴 쪽 양끝 약 11, 짧은 쪽 양끝 약 32). 컷 사이만 흰 줄 20.
-         가로: 2컷 620+20+620 = 1260, 4컷 세로 410+20+410 = 840.
-         세로: 2컷 620+20+620 = 1260, 4컷 가로 410+20+410 = 840. */
+         필름의 흰 테두리가 곧 액자라서 사진은 끝까지 채우고, 컷 사이에도 경계선이 없습니다(사용자 요청).
+         필름 쪽으로 얇은 흰 띠(80)를 두고 이름을 아주 작게 넣습니다(MEI 부스처럼).
+         필름 창이 가장자리를 조금 가립니다(긴 쪽 양끝 약 11, 짧은 쪽 양끝 약 32). 띠는 그보다 넓게 둡니다.
+         가로: 사진 0~760, 아래 띠 760~840 에 이름(왼쪽 x 26, 2·4컷은 오른쪽 x 1234도), 글자 바닥 y 792.
+         세로: 왼쪽 띠 0~80, 사진 80~840. 이름은 아래에서 위로 읽게 돌려(rot -90) x 70, 줄마다 아래 끝에서 시작. */
       {
         id: "wl1", name: "와이드 가로 1컷", enabled: true, instax: true,
         canvas: { w:1260, h:840 },
         frame: null,
         slots: [
-          {x:0, y:0, w:1260, h:840, shot:0}
+          {x:0, y:0, w:1260, h:760, shot:0}
         ],
-        texts: [],
+        texts: [
+          {content:"042 STUDIO  -  DAEJEON", x:26, y:792, size:18, ls:3, font:"body", align:"left", color:"#222222"}
+        ],
         cut: { on:false, x:630, color:"#D8D0CA" }
       },
       {
@@ -111,10 +114,13 @@ function defaultConfig(){
         canvas: { w:1260, h:840 },
         frame: null,
         slots: [
-          {x:0, y:0, w:620, h:840, shot:0},
-          {x:640, y:0, w:620, h:840, shot:1}
+          {x:0, y:0, w:630, h:760, shot:0},
+          {x:630, y:0, w:630, h:760, shot:1}
         ],
-        texts: [],
+        texts: [
+          {content:"042 STUDIO  -  DAEJEON", x:26, y:792, size:18, ls:3, font:"body", align:"left", color:"#222222"},
+          {content:"042 STUDIO  -  DAEJEON", x:1234, y:792, size:18, ls:3, font:"body", align:"right", color:"#222222"}
+        ],
         cut: { on:false, x:630, color:"#D8D0CA" }
       },
       {
@@ -122,12 +128,15 @@ function defaultConfig(){
         canvas: { w:1260, h:840 },
         frame: null,
         slots: [
-          {x:0, y:0, w:620, h:410, shot:0},
-          {x:640, y:0, w:620, h:410, shot:1},
-          {x:0, y:430, w:620, h:410, shot:2},
-          {x:640, y:430, w:620, h:410, shot:3}
+          {x:0, y:0, w:630, h:380, shot:0},
+          {x:630, y:0, w:630, h:380, shot:1},
+          {x:0, y:380, w:630, h:380, shot:2},
+          {x:630, y:380, w:630, h:380, shot:3}
         ],
-        texts: [],
+        texts: [
+          {content:"042 STUDIO  -  DAEJEON", x:26, y:792, size:18, ls:3, font:"body", align:"left", color:"#222222"},
+          {content:"042 STUDIO  -  DAEJEON", x:1234, y:792, size:18, ls:3, font:"body", align:"right", color:"#222222"}
+        ],
         cut: { on:false, x:630, color:"#D8D0CA" }
       },
       {
@@ -135,9 +144,11 @@ function defaultConfig(){
         canvas: { w:840, h:1260 },
         frame: null,
         slots: [
-          {x:0, y:0, w:840, h:1260, shot:0}
+          {x:80, y:0, w:760, h:1260, shot:0}
         ],
-        texts: [],
+        texts: [
+          {content:"042 STUDIO  -  DAEJEON", x:70, y:1240, size:18, ls:3, font:"body", align:"left", color:"#222222", rot:-90}
+        ],
         cut: { on:false, x:420, color:"#D8D0CA" }
       },
       {
@@ -145,10 +156,13 @@ function defaultConfig(){
         canvas: { w:840, h:1260 },
         frame: null,
         slots: [
-          {x:0, y:0, w:840, h:620, shot:0},
-          {x:0, y:640, w:840, h:620, shot:1}
+          {x:80, y:0, w:760, h:630, shot:0},
+          {x:80, y:630, w:760, h:630, shot:1}
         ],
-        texts: [],
+        texts: [
+          {content:"042 STUDIO  -  DAEJEON", x:70, y:615, size:18, ls:3, font:"body", align:"left", color:"#222222", rot:-90},
+          {content:"042 STUDIO  -  DAEJEON", x:70, y:1240, size:18, ls:3, font:"body", align:"left", color:"#222222", rot:-90}
+        ],
         cut: { on:false, x:420, color:"#D8D0CA" }
       },
       {
@@ -156,12 +170,15 @@ function defaultConfig(){
         canvas: { w:840, h:1260 },
         frame: null,
         slots: [
-          {x:0, y:0, w:410, h:620, shot:0},
-          {x:430, y:0, w:410, h:620, shot:1},
-          {x:0, y:640, w:410, h:620, shot:2},
-          {x:430, y:640, w:410, h:620, shot:3}
+          {x:80, y:0, w:380, h:630, shot:0},
+          {x:460, y:0, w:380, h:630, shot:1},
+          {x:80, y:630, w:380, h:630, shot:2},
+          {x:460, y:630, w:380, h:630, shot:3}
         ],
-        texts: [],
+        texts: [
+          {content:"042 STUDIO  -  DAEJEON", x:70, y:615, size:18, ls:3, font:"body", align:"left", color:"#222222", rot:-90},
+          {content:"042 STUDIO  -  DAEJEON", x:70, y:1240, size:18, ls:3, font:"body", align:"left", color:"#222222", rot:-90}
+        ],
         cut: { on:false, x:420, color:"#D8D0CA" }
       }
     ]
@@ -228,14 +245,14 @@ function migrate(cfg){
   });
   // 시작 화면에 "인스탁스 가로·세로"가 생겨서, 헷갈리지 않게 예전 AirPrint 용 와이드 2컷은 숨깁니다(관리자에서 다시 켤 수 있음).
   if (cfg.version < 12) cfg.layouts.forEach(function(l){ if (l.id === "wide2") l.enabled = false; });
-  // 와이드 프레임 6가지를 글자 없이 꽉 차게 다시 그렸습니다. 프레임 이미지를 올리지 않은 것만 바꿉니다.
-  if (cfg.version < 13) defaultConfig().layouts.forEach(function(d){
+  // 와이드 프레임 6가지를 경계선 없이 꽉 차게, 작은 이름 띠를 넣어 다시 그렸습니다. 프레임 이미지를 올리지 않은 것만 바꿉니다.
+  if (cfg.version < 14) defaultConfig().layouts.forEach(function(d){
     if (!d.instax) return;
     cfg.layouts.forEach(function(l){
       if (l.id === d.id && !l.frame){ l.canvas = d.canvas; l.slots = d.slots; l.texts = d.texts; }
     });
   });
-  if (cfg.version >= 8){ cfg.version = 13; return cfg; }
+  if (cfg.version >= 8){ cfg.version = 14; return cfg; }
 
   // 예전 보정은 이름만 있었습니다. 같은 이름의 새 보정으로 바꿔 끼웁니다.
   if (!Array.isArray(cfg.filters) || !cfg.filters.length){
@@ -274,7 +291,7 @@ function migrate(cfg){
   if (!hasPolaroid){
     cfg.layouts.push(defaultConfig().layouts.filter(function(d){ return d.id === "polaroid"; })[0]);
   }
-  cfg.version = 13;
+  cfg.version = 14;
   return cfg;
 }
 
@@ -1088,8 +1105,13 @@ function renderPrint(L, shots){
 
       L.texts.forEach(function(t){
         ctx.fillStyle=t.color; ctx.font=fontOf(t); ctx.textAlign=t.align; ctx.textBaseline="alphabetic";
-        ctx.fillText(resolveText(t.content), t.x, t.y);
+        if ("letterSpacing" in ctx) ctx.letterSpacing = (t.ls||0)+"px";   // 자간 (ls). 옛 브라우저는 없이 그립니다
+        // rot: 글자를 (x, y) 를 중심으로 돌립니다. -90 이면 아래에서 위로 읽는 세로 글씨입니다.
+        ctx.save(); ctx.translate(t.x, t.y); ctx.rotate((t.rot||0)*Math.PI/180);
+        ctx.fillText(resolveText(t.content), 0, 0);
+        ctx.restore();
       });
+      if ("letterSpacing" in ctx) ctx.letterSpacing = "0px";
 
       if (fr) ctx.drawImage(fr.img, 0,0, c.width, c.height);
       return new Promise(function(res){ c.toBlob(res,"image/jpeg",0.95); });
@@ -2121,7 +2143,9 @@ function renderEditor(){
     var left = t.x*k, align=t.align;
     var tx = align==="center" ? "-50%" : (align==="right" ? "-100%" : "0%");
     html += '<div class="txt'+(i===selText?" sel":"")+'" data-t="'+i+'" style="'+
-      'left:'+left+'px;top:'+(t.y*k)+'px;transform:translate('+tx+',-100%);'+
+      'left:'+left+'px;top:'+(t.y*k)+'px;transform-origin:0 0;'+
+      'transform:rotate('+(t.rot||0)+'deg) translate('+tx+',-100%);white-space:pre;'+
+      'letter-spacing:'+((t.ls||0)*k)+'px;'+
       'font-size:'+Math.max(7,t.size*k)+'px;color:'+t.color+';'+
       'font-family:'+(t.font==="display"?"var(--display)":"var(--body)")+'">'+
       escapeHtml(resolveText(t.content))+'</div>';
