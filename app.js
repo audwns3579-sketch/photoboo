@@ -7,7 +7,7 @@
    ══════════════════════════════════════════ */
 function defaultConfig(){
   return {
-    version: 15,
+    version: 16,
     brand: "STUDIO 042",
     timer: 5,
     filter: "bright",
@@ -15,7 +15,8 @@ function defaultConfig(){
     slim: { amount:0, x:50, y:45, size:35 },   // 얼굴 줄이기(유동화) — 세기, 가운데 위치 %, 범위 %
     cameraId: null,
     // 인스탁스 — 손님이 시작 화면에서 인스탁스 가로·세로를 고르면 맥(relay 주소)으로 인화합니다
-    instax: { relay:"" },
+    // live: 대기 화면을 누르면 바로 사진 고르기로 가서, 맥의 부스 사진 폴더에 찍히는 사진을 실시간으로 받습니다
+    instax: { relay:"", live:true },
     filters: defaultFilters(),
     backgrounds: [],     // 배경 목록 {id,name,h,v}
     bgId: null,          // 지금 고른 배경 (모든 인화 방식이 함께 씁니다)
@@ -261,7 +262,9 @@ function migrate(cfg){
       if (t.content === "042 STUDIO  -  DAEJEON"){ t.size = 20; t.ls = 6; t.weight = 700; t.color = "#111111"; }
     });
   });
-  if (cfg.version >= 8){ cfg.version = 15; return cfg; }
+  // 대기 화면에서 바로 사진 고르기(맥에서 실시간 받기)를 새로 넣었습니다. 켠 채로 시작합니다(관리자에서 끌 수 있음).
+  if (cfg.version < 16 && cfg.instax && cfg.instax.live === undefined) cfg.instax.live = true;
+  if (cfg.version >= 8){ cfg.version = 16; return cfg; }
 
   // 예전 보정은 이름만 있었습니다. 같은 이름의 새 보정으로 바꿔 끼웁니다.
   if (!Array.isArray(cfg.filters) || !cfg.filters.length){
@@ -300,7 +303,7 @@ function migrate(cfg){
   if (!hasPolaroid){
     cfg.layouts.push(defaultConfig().layouts.filter(function(d){ return d.id === "polaroid"; })[0]);
   }
-  cfg.version = 15;
+  cfg.version = 16;
   return cfg;
 }
 
@@ -386,7 +389,7 @@ function show(el){ [setupEl,shootEl,pickEl,resultEl,adminEl].forEach(function(s)
   var film = instaxOn() && (el===pickEl || el===resultEl);
   pickEl.classList.toggle("instax", film); resultEl.classList.toggle("instax", film);
   $("printerLine").hidden = !film || !relayUrl();
-  if (el===resultEl) syncPrintBtn(); }
+  if (el===resultEl){ syncPrintBtn(); $("againBtn").textContent = liveSession ? "끝내기" : "다시 찍기"; } }
 /* 미리보기 필름 방향 — 세로 프레임이면 두꺼운 띠가 옆으로 갑니다 */
 function setFilm(L){
   var v = !!L && !isLandscape(L);
@@ -609,7 +612,23 @@ function showStep(n){
   $("shotNote").hidden = step !== 3;
 }
 $("backBtn").addEventListener("click", function(){ showStep(step-1); });
-$("attract").addEventListener("click", function(){ $("attract").hidden = true; showStep(1); });
+/* 대기 화면을 누르면: 맥에서 실시간으로 받는 중이면 바로 사진 고르기, 아니면 시작 화면 1단계 */
+$("attract").addEventListener("click", function(){
+  if (longPressed) return;
+  $("attract").hidden = true;
+  if (liveOn()) openLive(); else showStep(1);
+});
+/* 관리자 화면은 대기 화면의 큰 이름을 0.75초 길게 눌러 엽니다(시작 화면 이름도 같습니다) */
+(function(){
+  var t = null, el = $("attractBrand");
+  el.addEventListener("pointerdown", function(){
+    t = setTimeout(function(){
+      longPressed = true; setTimeout(function(){ longPressed = false; }, 1000);   // 손을 뗄 때 눌림으로 치지 않게
+      openAdmin();
+    }, 750);
+  });
+  ["pointerup","pointerleave","pointercancel"].forEach(function(ev){ el.addEventListener(ev, function(){ clearTimeout(t); }); });
+})();
 
 $("modes").addEventListener("click", function(e){
   var b=e.target.closest(".mode"); if(!b) return;
@@ -1141,7 +1160,18 @@ function setPrintPage(L){
 /* ── 사진 고르기 ──────────────────────────
    찍은 사진을 격자로 보여주고, 손님이 누른 순서대로 1번 칸, 2번 칸… 에 넣습니다.
    고를 때마다 인화지를 다시 그려 왼쪽에 보여줍니다. */
-var P = { L:null, need:0, picks:[], url:null, token:0 };
+var P = { L:null, need:0, picks:[], url:null, token:0,
+          live:false, liveId:0, timer:null, seen:{}, fails:0, maxStamp:0 };
+var liveSession = false;   // 이번 손님이 맥에서 실시간으로 받은 사진으로 만들고 있는지
+var longPressed = false;
+function addPickThumb(c, i){
+  var b=document.createElement("button");
+  b.className="pk"; b.dataset.i=i; b.setAttribute("aria-pressed","false");
+  b.setAttribute("aria-label", (i+1)+"번째 사진");
+  b.appendChild(c);   // 찍은 캔버스를 그대로 씁니다. 섬네일을 따로 만들면 메모리가 두 배가 됩니다.
+  b.appendChild(document.createElement("span")).className="no";
+  $("pickGrid").appendChild(b);
+}
 function instaxOrients(){ return ["h","v"].filter(function(o){ return instaxFrames(o).length; }); }
 function pickChips(){
   buildChips($("pickFrames"), enabledLayouts().map(function(f, i){ return {id:i, name:shotCount(f)+"컷"}; }), cur, false);
@@ -1159,14 +1189,8 @@ function openPick(L, need, imported){
   if (P.imported) buildChips($("pickOrient"), instaxOrients().map(function(o){ return {id:o, name:o==="h" ? "가로" : "세로"}; }), instaxOrient, false);
   if (instaxOn()){ pickChips(); printerStatus(); }
   $("pickGrid").innerHTML = "";
-  S.shots.forEach(function(c, i){
-    var b=document.createElement("button");
-    b.className="pk"; b.dataset.i=i; b.setAttribute("aria-pressed","false");
-    b.setAttribute("aria-label", (i+1)+"번째 사진");
-    b.appendChild(c);   // 찍은 캔버스를 그대로 씁니다. 섬네일을 따로 만들면 메모리가 두 배가 됩니다.
-    b.appendChild(document.createElement("span")).className="no";
-    $("pickGrid").appendChild(b);
-  });
+  S.shots.forEach(function(c, i){ addPickThumb(c, i); });
+  $("pickFromPhotos").hidden = true; $("pickEmpty").hidden = true;   // 맥에서 받는 중일 때만 openLive 가 켭니다
   show(pickEl);
   refreshPick();
 }
@@ -1189,6 +1213,7 @@ function refreshPick(){
   });
 }
 function closePick(){
+  liveStop(); $("pickEmpty").hidden = true;
   P.token++; $("pickGrid").innerHTML="";
   if (P.url){ URL.revokeObjectURL(P.url); P.url=null; }
   $("pickPrev").removeAttribute("src");
@@ -1225,6 +1250,74 @@ $("pickOrient").addEventListener("click", function(e){
   pickChips(); setPickAr(); refreshPick();
 });
 
+/* ── 맥에서 실시간으로 사진 받기 ─────────────
+   후지 테더 앱이 맥의 "부스 사진" 폴더에 저장하는 사진을 인화 서버(/photos)에 2초마다 물어 가져옵니다.
+   고르기 화면이 열려 있는 동안 새 사진이 하나씩 떠오릅니다. 손님이 끝나면 /photos/done 으로
+   "여기까지 본 사진"을 알려서, 다음 손님에게는 그 뒤에 찍은 사진만 보이게 합니다(맥 폴더의 파일은 그대로 둡니다).
+   한 번에 한 팀씩 쓰는 것이 전제입니다. 앞 손님이 끝나기 전에 다음 손님을 찍으면 앞 손님 화면에도 뜹니다. */
+var LIVE_MS = 2000;
+function liveOn(){ return !!relayUrl() && !(CFG.instax && CFG.instax.live === false) && instaxOrients().length > 0; }
+function liveStop(){ P.live = false; P.liveId++; clearTimeout(P.timer); }
+function liveNote(){
+  var el = $("pickEmpty");
+  el.hidden = !P.live || S.shots.length > 0;
+  el.textContent = P.fails > 1
+    ? "맥과 연결되지 않았습니다. 맥에서 인화 서버가 켜져 있는지 확인해 주세요."
+    : "사진을 기다리는 중입니다. 촬영하면 여기에 나타납니다.";
+}
+function liveGet(url, p, id){
+  return fetch(url+"/photo?name="+encodeURIComponent(p.name))
+    .then(function(r){
+      if (r.status === 404 || r.status === 500) return null;   // 없어졌거나 읽을 수 없는 파일은 건너뜁니다(안 그러면 뒤 사진이 영영 막힙니다)
+      if (!r.ok) throw new Error("photo");
+      return r.blob();
+    })
+    .then(function(b){ return b ? loadPhoto(b).catch(function(){ return null; }) : null; })
+    .then(function(c){
+      P.seen[p.name+"@"+p.stamp] = 1; P.maxStamp = Math.max(P.maxStamp, p.stamp);
+      if (!c) return;
+      if (id !== P.liveId){ freeCanvases([c]); return; }
+      S.shots.push(c); addPickThumb(c, S.shots.length-1);
+      pickChips(); refreshPick(); liveNote();
+    });
+}
+function liveTick(){
+  if (!P.live) return;
+  var id = P.liveId, url = relayUrl();
+  fetch(url+"/photos").then(function(r){ return r.json(); }).then(function(j){
+    if (id !== P.liveId) return;
+    if (!j.ok) throw new Error("photos");
+    P.fails = 0; liveNote();
+    var fresh = (j.photos || []).filter(function(p){ return !P.seen[p.name+"@"+p.stamp]; });
+    // 한 장씩 차례로 받아야 큰 사진이 한꺼번에 메모리에 올라가지 않습니다
+    return fresh.reduce(function(pr, p){
+      return pr.then(function(){ return (id === P.liveId && S.shots.length < IMPORT_MAX) ? liveGet(url, p, id) : null; });
+    }, Promise.resolve());
+  }).catch(function(){ if (id === P.liveId){ P.fails++; liveNote(); } })
+    .then(function(){ if (id === P.liveId) P.timer = setTimeout(liveTick, LIVE_MS); });
+}
+function openLive(){
+  liveStop();
+  freeCanvases(S.shots); S.shots = [];
+  instaxOrient = instaxOrients()[0]; cur = 0;
+  var L0 = enabledLayouts()[0];
+  liveSession = true;
+  openPick(L0, shotCount(L0), true);
+  P.live = true; P.seen = {}; P.fails = 0; P.maxStamp = 0;
+  $("pickFromPhotos").hidden = false;
+  liveNote(); liveTick();
+}
+/* 손님이 끝났을 때(끝내기·처음으로). 실패하면 다음 손님에게 앞 손님 사진이 보이니 알려줍니다. */
+function liveFinish(){
+  if (!liveSession) return;
+  liveSession = false;
+  fetch(relayUrl()+"/photos/done?upTo="+P.maxStamp, { method:"POST" })
+    .then(function(r){ return r.json(); })
+    .then(function(j){ if (!j.ok) throw new Error("done"); })
+    .catch(function(){ say("맥에서 앞 손님 사진을 정리하지 못했습니다. 다음 손님 화면에 앞 사진이 보일 수 있습니다.", 8000); });
+}
+$("pickFromPhotos").addEventListener("click", function(){ $("importBtn").click(); });
+
 /* ── 찍어 둔 사진 불러오기 ─────────────────
    맥에서 보내준 사진을 손님이 직접 고릅니다. 촬영 대신 사진 파일을 S.shots 에 담고
    같은 고르기 화면으로 갑니다. 카메라로 찍은 원본이라 거울 뒤집기·보정은 하지 않습니다. */
@@ -1246,6 +1339,7 @@ $("importBtn").addEventListener("click", function(){ $("importFile").value=""; $
 $("importFile").addEventListener("change", function(e){
   var files = Array.prototype.slice.call(e.target.files || []);
   if (!files.length) return;
+  liveStop(); liveSession = false;   // 사진 앱에서 고르면 맥 폴더의 사진은 이 손님 것이 아닙니다
   var cut = files.length > IMPORT_MAX;
   if (cut) files = files.slice(0, IMPORT_MAX);
   say("사진을 불러오는 중입니다…", 0);
@@ -1278,8 +1372,8 @@ $("pickDone").addEventListener("click", function(){
   });
 });
 $("pickQuit").addEventListener("click", function(){
-  ask("찍은 사진을 버리고 처음으로 돌아갈까요?", function(){
-    closePick(); freeCanvases(S.shots); S.shots=[]; readyMode(true); show(setupEl);
+  ask(liveSession ? "맥에서 받은 사진을 정리하고 처음으로 돌아갈까요?" : "찍은 사진을 버리고 처음으로 돌아갈까요?", function(){
+    closePick(); freeCanvases(S.shots); S.shots=[]; readyMode(true); liveFinish(); show(setupEl);
   });
 });
 
@@ -1320,7 +1414,7 @@ $("flipBtn").addEventListener("click", function(){
   openCamera().then(applyPreviewFilter).catch(function(e){ say(cameraError(e)); });
 });
 $("againBtn").addEventListener("click", function(){
-  S.blob=null; freeCanvases(S.shots); S.shots=[]; hush(); readyMode(true); show(setupEl);
+  S.blob=null; freeCanvases(S.shots); S.shots=[]; hush(); readyMode(true); liveFinish(); show(setupEl);
 });
 $("printBtn").addEventListener("click", function(){ if (instaxOn()) printInstax(); else window.print(); });
 
@@ -1417,6 +1511,9 @@ $("admClose").addEventListener("click", function(){
 /* ── 인스탁스 ─────────────────────────── */
 $("relayUrl").addEventListener("input", function(e){
   CFG.instax.relay = e.target.value.trim(); saveConfig();
+});
+$("liveOn").addEventListener("change", function(e){
+  CFG.instax.live = e.target.checked; saveConfig();
 });
 $("relayCheck").addEventListener("click", function(){
   var note=$("relayNote"), url=relayUrl();
@@ -1705,6 +1802,7 @@ $("pvToggle").addEventListener("click", function(){
 function renderAdmin(){
   scanCameras();
   $("relayUrl").value = (CFG.instax && CFG.instax.relay) || "";
+  $("liveOn").checked = !(CFG.instax && CFG.instax.live === false);
   renderFilterList();
   renderFilterFields();
   renderFaceSliders();

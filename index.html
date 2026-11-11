@@ -127,6 +127,7 @@ label.lab{display:flex;flex-direction:column;gap:5px;font-size:11px;letter-spaci
   background:var(--panel);color:var(--muted)}
 .chip[aria-pressed=true]{border-color:var(--lamp);color:var(--lamp);background:#231B10}
 .chip:disabled{opacity:.35}
+#pickEmpty{font-size:17px;color:var(--fg);max-width:34ch}
 #importBtn{min-height:64px;font-size:19px;padding:0 36px}
 
 /* ── 2. 촬영 ──────────────────────────── */
@@ -385,8 +386,11 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;
   <h2 class="ask" id="pickTitle">사진 고르기</h2>
   <div class="pick-body">
     <div class="pick-left">
+      <p class="hint" id="pickEmpty" hidden></p>
       <div class="pick-grid" id="pickGrid" role="group" aria-label="찍은 사진"></div>
       <p class="hint">누른 순서대로 1번 칸, 2번 칸에 들어갑니다. 다시 누르면 빠집니다.</p>
+      <!-- 맥에서 사진이 안 올 때를 위한 길: 아이패드 사진 앱에서 직접 고릅니다 -->
+      <button class="btn ghost sm" id="pickFromPhotos" hidden>사진 앱에서 고르기</button>
     </div>
     <div class="pick-side">
       <div class="chips" id="pickOrient" role="group" aria-label="방향" hidden></div>
@@ -446,6 +450,9 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;
         <h3>인스탁스</h3>
         <label class="lab">인화 맥 주소<input type="url" id="relayUrl" placeholder="https://studio042s-iMac.local:8443"
                autocomplete="off" autocapitalize="off" spellcheck="false"></label>
+        <label class="lab" style="flex-direction:row;align-items:center;gap:9px;text-transform:none;letter-spacing:0;font-size:14px;color:var(--fg)">
+          <input type="checkbox" id="liveOn" style="width:auto"> 화면을 누르면 바로 사진 고르기 (맥의 <b>부스 사진</b> 폴더에서 실시간으로 받기)
+        </label>
         <div class="row">
           <button class="btn sm" id="relayCheck">연결 확인</button>
         </div>
