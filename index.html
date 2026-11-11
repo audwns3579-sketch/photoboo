@@ -126,6 +126,8 @@ label.lab{display:flex;flex-direction:column;gap:5px;font-size:11px;letter-spaci
 .chip{padding:14px 24px;border-radius:999px;font-size:18px;border:1px solid var(--line);
   background:var(--panel);color:var(--muted)}
 .chip[aria-pressed=true]{border-color:var(--lamp);color:var(--lamp);background:#231B10}
+.chip:disabled{opacity:.35}
+#importBtn{min-height:64px;font-size:19px;padding:0 36px}
 
 /* ── 2. 촬영 ──────────────────────────── */
 #shoot{justify-content:center;align-items:center;gap:16px;padding-block:18px}
@@ -162,6 +164,7 @@ label.lab{display:flex;flex-direction:column;gap:5px;font-size:11px;letter-spaci
   .pick-left{flex:1 1 0;min-width:0;max-width:540px}
   .pick-left .pick-grid{width:100%}
   #pick.instax .pick-side .film{--fw:min(40vw, 54vh*1.256)}
+  #pick.instax .pick-side .film.v{--fw:min(30vw, 42vh*0.796)}
   #pick.instax .pick-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
 }
 #pickPrev{max-height:62vh;max-width:min(42vw,100%);width:auto;background:#fff;border-radius:3px;
@@ -331,6 +334,9 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;
   <div class="field" data-step="1">
     <h2 class="ask">어떤 사진을 뽑을까요?</h2>
     <div class="modes" id="modes" role="group" aria-label="인화 방식"></div>
+    <!-- 맥에서 보내준 사진으로 만들기 — 카메라 없이 사진을 불러와 고르기 화면으로 갑니다 -->
+    <button class="btn ghost" id="importBtn" hidden>찍어 둔 사진으로 만들기</button>
+    <input type="file" id="importFile" accept="image/*" multiple hidden>
   </div>
   <div class="field" data-step="2" hidden>
     <h2 class="ask" id="step2Title">배경을 골라주세요</h2>
@@ -383,6 +389,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;
       <p class="hint">누른 순서대로 1번 칸, 2번 칸에 들어갑니다. 다시 누르면 빠집니다.</p>
     </div>
     <div class="pick-side">
+      <div class="chips" id="pickOrient" role="group" aria-label="방향" hidden></div>
       <div class="chips" id="pickFrames" role="group" aria-label="프레임" hidden></div>
       <div class="film" id="pickFilm"><img id="pickPrev" alt="고른 사진으로 만든 인화 미리보기"></div>
       <div class="pick-actions">

@@ -223,7 +223,10 @@ var BLEND_MODES = [
 var TIMERS = [3,5,10];
 /* 촬영 방식 — fixed: 칸 수만큼만 찍고 바로 합성 / pick: 여러 장 찍은 뒤 손님이 골라서 합성 */
 var SHOOT_MODES = [{id:"fixed", name:"정해진 컷만"}, {id:"pick", name:"많이 찍고 고르기"}];
-var PICK_SHOTS = 8;      // 많이 찍고 고르기에서 찍는 장 수 (칸 수가 더 많으면 칸 수만큼)
+/* 불러온 사진은 촬영(grabFull)과 같은 1600px 로 줄입니다. 후지 원본(6240×4160)을 그대로 두면
+   캔버스 메모리가 넘칩니다. 12장이면 촬영 8장과 비슷한 메모리입니다. */
+var IMPORT_LONG = 1600, IMPORT_MAX = 12;
+var PICK_SHOTS = 8;     // 많이 찍고 고르기에서 찍는 장 수 (칸 수가 더 많으면 칸 수만큼)
 
 /* 예전에 저장해둔 설정을 새 기본값에 맞춰 올려줍니다.
    손대지 않은 기본 레이아웃만 바꾸고, 직접 편집했거나 이미지를 올린 것은 그대로 둡니다. */
@@ -468,6 +471,7 @@ function buildModes(){
   var list = normalLayouts();
   var films = ["h","v"].filter(function(o){ return instaxFrames(o).length; });
   if (!list.length && !films.length){ $("modes").innerHTML = '<p class="note">보이도록 켜둔 인화 방식이 없습니다. 관리자 화면에서 켜주세요.</p>'; return; }
+  $("importBtn").hidden = !films.length;
   if (instaxOrient && films.indexOf(instaxOrient) < 0) instaxOrient = null;
   if (!instaxOn() && !list.length) instaxOrient = films[0];
   if (cur >= enabledLayouts().length) cur = 0;
@@ -1138,15 +1142,22 @@ function setPrintPage(L){
    찍은 사진을 격자로 보여주고, 손님이 누른 순서대로 1번 칸, 2번 칸… 에 넣습니다.
    고를 때마다 인화지를 다시 그려 왼쪽에 보여줍니다. */
 var P = { L:null, need:0, picks:[], url:null, token:0 };
-function openPick(L, need){
-  P.L=L; P.need=need; P.picks=[];
+function instaxOrients(){ return ["h","v"].filter(function(o){ return instaxFrames(o).length; }); }
+function pickChips(){
+  buildChips($("pickFrames"), enabledLayouts().map(function(f, i){ return {id:i, name:shotCount(f)+"컷"}; }), cur, false);
+  // 불러온 사진이 칸보다 적으면 그 프레임은 못 쓰니 눌리지 않게 합니다
+  Array.prototype.forEach.call($("pickFrames").children, function(b, i){
+    b.disabled = shotCount(enabledLayouts()[i]) > S.shots.length;
+  });
+}
+function openPick(L, need, imported){
+  P.L=L; P.need=need; P.picks=[]; P.imported=!!imported;
   setPickAr();
-  // 인스탁스 부스는 여기서 프레임도 고릅니다
+  // 인스탁스 부스는 여기서 프레임도 고릅니다. 불러온 사진은 가로·세로도 여기서 고릅니다.
   $("pickFrames").hidden = !instaxOn();
-  if (instaxOn()){
-    buildChips($("pickFrames"), enabledLayouts().map(function(f, i){ return {id:i, name:shotCount(f)+"컷"}; }), cur, false);
-    printerStatus();
-  }
+  $("pickOrient").hidden = !P.imported;
+  if (P.imported) buildChips($("pickOrient"), instaxOrients().map(function(o){ return {id:o, name:o==="h" ? "가로" : "세로"}; }), instaxOrient, false);
+  if (instaxOn()){ pickChips(); printerStatus(); }
   $("pickGrid").innerHTML = "";
   S.shots.forEach(function(c, i){
     var b=document.createElement("button");
@@ -1205,6 +1216,54 @@ $("pickFrames").addEventListener("click", function(e){
   setPickAr();
   refreshPick();
 });
+$("pickOrient").addEventListener("click", function(e){
+  var b=e.target.closest(".chip"); if(!b) return;
+  instaxOrient = b.dataset.v; cur = 0;
+  P.L = enabledLayouts()[cur]; P.need = shotCount(P.L);
+  P.picks = P.picks.slice(0, P.need);
+  pressOnly($("pickOrient"), instaxOrient);
+  pickChips(); setPickAr(); refreshPick();
+});
+
+/* ── 찍어 둔 사진 불러오기 ─────────────────
+   맥에서 보내준 사진을 손님이 직접 고릅니다. 촬영 대신 사진 파일을 S.shots 에 담고
+   같은 고르기 화면으로 갑니다. 카메라로 찍은 원본이라 거울 뒤집기·보정은 하지 않습니다. */
+function loadPhoto(file){
+  return new Promise(function(resolve, reject){
+    var url = URL.createObjectURL(file), img = new Image();
+    img.onload = function(){
+      var sc = Math.min(1, IMPORT_LONG/Math.max(img.naturalWidth, img.naturalHeight));
+      var c = document.createElement("canvas");
+      c.width = Math.round(img.naturalWidth*sc); c.height = Math.round(img.naturalHeight*sc);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url); resolve(c);
+    };
+    img.onerror = function(){ URL.revokeObjectURL(url); reject(); };
+    img.src = url;
+  });
+}
+$("importBtn").addEventListener("click", function(){ $("importFile").value=""; $("importFile").click(); });
+$("importFile").addEventListener("change", function(e){
+  var files = Array.prototype.slice.call(e.target.files || []);
+  if (!files.length) return;
+  var cut = files.length > IMPORT_MAX;
+  if (cut) files = files.slice(0, IMPORT_MAX);
+  say("사진을 불러오는 중입니다…", 0);
+  freeCanvases(S.shots); S.shots = [];
+  // 한 장씩 차례로 읽어야 큰 원본이 한꺼번에 메모리에 올라가지 않습니다
+  files.reduce(function(p, f){
+    return p.then(function(){ return loadPhoto(f).then(function(c){ S.shots.push(c); }, function(){}); });
+  }, Promise.resolve()).then(function(){
+    hush();
+    if (!S.shots.length){ say("사진을 읽지 못했습니다. 다시 골라주세요.", 5000); return; }
+    instaxOrient = instaxOrients()[0]; cur = 0;
+    var L0 = enabledLayouts()[0];
+    openPick(L0, shotCount(L0), true);
+    if (cut) say("한 번에 "+IMPORT_MAX+"장까지만 불러옵니다. 앞의 "+IMPORT_MAX+"장을 썼습니다.", 6000);
+    else if (S.shots.length < files.length) say((files.length-S.shots.length)+"장은 읽지 못했습니다.", 6000);
+  });
+});
+
 $("pickDone").addEventListener("click", function(){
   if (P.picks.length<P.need) return;
   var shots=P.picks.map(function(i){ return S.shots[i]; });
