@@ -116,6 +116,12 @@ label.lab{display:flex;flex-direction:column;gap:5px;font-size:11px;letter-spaci
   background:var(--panel);color:var(--muted)}
 .chip[aria-pressed=true]{border-color:var(--lamp);color:var(--lamp);background:#231B10}
 .chip:disabled{opacity:.35}
+/* 컷 버튼 줄: 컷 버튼 + 색감 버튼. 좁으면 줄을 바꿉니다 */
+.pick-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px 14px}
+.pick-row .chips{gap:8px}
+.pick-sep{width:1px;height:26px;background:var(--line)}
+#pickLooks .chip{max-width:104px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:9px 14px;font-size:15px}
+.fmt{font-size:13px;letter-spacing:.04em;color:var(--lamp)}
 #pickEmpty{font-size:17px;color:var(--fg);max-width:34ch;white-space:pre-line;overflow-wrap:anywhere}
 #importBtn{min-height:64px;font-size:19px;padding:0 36px}
 
@@ -161,13 +167,13 @@ label.lab{display:flex;flex-direction:column;gap:5px;font-size:11px;letter-spaci
   .pick-body{flex:1 1 0;min-height:340px;flex-wrap:nowrap;gap:28px}
   .pick-left{flex:0 0 clamp(280px,34vw,420px);align-self:stretch;min-height:0;justify-content:flex-start}
   .pick-left .pick-grid{width:100%;flex:1 1 auto;min-height:0;max-height:none;align-content:start}
-  .pick-side{flex:none;gap:10px}
+  .pick-side{flex:none;gap:10px;max-width:calc(100vw - 60px - clamp(280px,34vw,420px))}
   .pick-actions .btn{min-height:50px;font-size:17px}
   #pick.instax #pickFrames .chip{padding:9px 18px}
-  #pick.instax .pick-side .film{--fw:min(calc((100vh - 170px) * 1.256), calc(100vw - 60px - clamp(280px,34vw,420px)))}
-  #pick.instax .pick-side .film.v{--fw:min(calc((100vh - 170px) * .796), calc(100vw - 60px - clamp(280px,34vw,420px)))}
-  #pick.instax.withOrient .pick-side .film{--fw:min(calc((100vh - 230px) * 1.256), calc(100vw - 60px - clamp(280px,34vw,420px)))}
-  #pick.instax.withOrient .pick-side .film.v{--fw:min(calc((100vh - 230px) * .796), calc(100vw - 60px - clamp(280px,34vw,420px)))}
+  #pick.instax .pick-side .film{--fw:min(calc((100vh - 133px - var(--rowh,37px)) * 1.256), calc(100vw - 60px - clamp(280px,34vw,420px)))}
+  #pick.instax .pick-side .film.v{--fw:min(calc((100vh - 133px - var(--rowh,37px)) * .796), calc(100vw - 60px - clamp(280px,34vw,420px)))}
+  #pick.instax.withOrient .pick-side .film{--fw:min(calc((100vh - 193px - var(--rowh,37px)) * 1.256), calc(100vw - 60px - clamp(280px,34vw,420px)))}
+  #pick.instax.withOrient .pick-side .film.v{--fw:min(calc((100vh - 193px - var(--rowh,37px)) * .796), calc(100vw - 60px - clamp(280px,34vw,420px)))}
   #pick.instax .pick-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 #pickPrev{max-height:62vh;max-width:min(42vw,100%);width:auto;background:#fff;border-radius:3px;
@@ -394,7 +400,12 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;
     </div>
     <div class="pick-side">
       <div class="chips" id="pickOrient" role="group" aria-label="방향" hidden></div>
-      <div class="chips" id="pickFrames" role="group" aria-label="프레임" hidden></div>
+      <!-- 컷 수 버튼 옆에 색감 버튼(관리자에서 '고르기 화면에 보이기'를 켠 색감, 최대 3개) -->
+      <div class="pick-row" id="pickRow">
+        <div class="chips" id="pickFrames" role="group" aria-label="프레임" hidden></div>
+        <span class="pick-sep" id="pickSep" hidden></span>
+        <div class="chips" id="pickLooks" role="group" aria-label="색감" hidden></div>
+      </div>
       <div class="film" id="pickFilm"><img id="pickPrev" alt="고른 사진으로 만든 인화 미리보기"></div>
       <div class="pick-actions">
         <button class="btn primary" id="pickDone" disabled>이 사진으로 완성</button>
@@ -492,7 +503,10 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;
         <div class="layoutlist" id="filterList"></div>
         <label class="lab">이름<input type="text" id="fName" maxlength="12"></label>
         <label class="lab" style="flex-direction:row;align-items:center;gap:9px;text-transform:none;letter-spacing:0;font-size:14px;color:var(--fg)">
-          <input type="checkbox" id="fEnabled" style="width:auto"> 손님 화면에 보이기
+          <input type="checkbox" id="fEnabled" style="width:auto"> 촬영 화면에서 손님이 고르는 보정으로 보이기 (카메라로 찍는 흐름)
+        </label>
+        <label class="lab" style="flex-direction:row;align-items:center;gap:9px;text-transform:none;letter-spacing:0;font-size:14px;color:var(--fg)">
+          <input type="checkbox" id="fPick" style="width:auto"> <b>사진 고르기 화면에 색감 버튼으로 보이기</b> (컷 버튼 옆, 최대 3개)
         </label>
 
         <div class="sliders" id="fSliders"></div>
@@ -508,6 +522,26 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;
         <p class="note"><b>피부 보정</b>은 주변과 밝기 차가 작은 자리만 다듬습니다. 잡티와 모공은
         줄고 눈·눈썹·머리카락은 그대로 남습니다. <b>디테일 지키기</b>를 올릴수록 더 옅은 잡티만
         건드립니다. 위 미리보기에 찍힐 모습 그대로 보이고, 자세히 보려면 한 장 찍어 비교하세요.</p>
+
+        <h3 style="margin-top:4px">색감 파일 가져오기</h3>
+        <div class="row">
+          <button class="btn sm" id="fLutBtn">파일 고르기</button>
+          <span class="fmt">*.cube &nbsp; *.xmp &nbsp; *.acv</span>
+          <button class="btn sm ghost" id="fLutClear" hidden>가져온 색감 지우기</button>
+        </div>
+        <input type="file" id="fLutFile" accept=".cube,.xmp,.acv" hidden>
+        <p class="note" id="fLutInfo"></p>
+        <div id="fLutMore" hidden>
+          <div class="sl"><label for="fLutAmt">가져온 색감 세기</label>
+            <input type="range" id="fLutAmt" min="0" max="100" step="1"><output id="fLutAmtOut"></output></div>
+        </div>
+        <p class="note"><b>*.cube</b> 포토샵(파일 → 내보내기 → 컬러 룩업 테이블)이나 다빈치 리졸브에서 내보낸 3D 룩업 테이블입니다.
+        <b>가장 정확하게</b> 똑같이 나옵니다.<br>
+        <b>*.xmp</b> 라이트룸 프리셋(프리셋 우클릭 → 내보내기)입니다. 노출·대비·하이라이트·섀도·채도·생동감·색온도·톤 커브를
+        <b>비슷하게</b> 옮깁니다. HSL·색 분리 같은 세부 항목은 빠집니다.<br>
+        <b>*.acv</b> 포토샵 곡선 파일(곡선 → 저장)입니다.<br>
+        라이트룸은 룩업 테이블을 바로 내보내지 못합니다. 라이트룸 색감을 정확히 쓰려면 포토샵에서 같은 색감을 만들어
+        *.cube 로 내보내세요. 가져온 색감은 위의 밝기·대비 같은 값 위에 겹쳐 적용됩니다.</p>
 
         <button class="btn sm danger" id="fReset">보정만 기본값으로</button>
       </div>

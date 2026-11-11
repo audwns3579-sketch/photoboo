@@ -7,7 +7,7 @@
    ══════════════════════════════════════════ */
 function defaultConfig(){
   return {
-    version: 19,
+    version: 20,
     brand: "STUDIO 042",
     timer: 5,
     filter: "bright",
@@ -126,7 +126,7 @@ function newFilter(over){
   var f = {
     id:"F"+Date.now(), name:"새 보정", enabled:true,
     brightness:100, contrast:100, saturate:100, sepia:0, hue:0,
-    smooth:0, detail:70, fade:0, vignette:0,
+    smooth:0, detail:70, fade:0, vignette:0, pick:false,
     tint:{ color:"#FFB07A", mode:"soft-light", amount:0 }
   };
   for (var k in (over||{})) f[k]=over[k];
@@ -143,7 +143,11 @@ function defaultFilters(){
                             smooth:40, detail:76, fade:16, vignette:22,
                             tint:{color:"#FF9E5E", mode:"soft-light", amount:22}}),
     newFilter({id:"cool",   name:"쿨톤",     brightness:103, contrast:102, saturate:96, smooth:58, detail:70,
-                            tint:{color:"#8FB8E8", mode:"soft-light", amount:24}})
+                            tint:{color:"#8FB8E8", mode:"soft-light", amount:24}}),
+    // 사진 고르기 화면의 색감 버튼(pick). 촬영 화면의 보정 버튼에는 안 나오게 enabled 는 끕니다.
+    newFilter({id:"look-color", name:"컬러",  enabled:false, pick:true, smooth:0}),
+    newFilter({id:"look-mono",  name:"흑백",  enabled:false, pick:true, smooth:0, saturate:0, contrast:110}),
+    newFilter({id:"look-sepia", name:"세피아", enabled:false, pick:true, smooth:0, sepia:85, saturate:92, contrast:104, brightness:102, fade:8})
   ];
 }
 var BLEND_MODES = [
@@ -216,7 +220,11 @@ function migrate(cfg){
       });
     });
   }
-  if (cfg.version >= 8){ cfg.version = 19; return cfg; }
+  // 사진 고르기 화면의 색감 버튼(컬러·흑백·세피아)을 새로 넣었습니다. 예전 설정에는 없으니 붙여 줍니다.
+  if (cfg.version < 20 && Array.isArray(cfg.filters) && cfg.filters.length && !cfg.filters.some(function(f){ return f.pick; })){
+    defaultFilters().filter(function(f){ return f.pick; }).forEach(function(f){ cfg.filters.push(f); });
+  }
+  if (cfg.version >= 8){ cfg.version = 20; return cfg; }
 
   // 예전 보정은 이름만 있었습니다. 같은 이름의 새 보정으로 바꿔 끼웁니다.
   if (!Array.isArray(cfg.filters) || !cfg.filters.length){
@@ -240,7 +248,7 @@ function migrate(cfg){
     delete l.bg;
   });
   if (cfg.bgId === undefined) cfg.bgId = null;
-  cfg.version = 19;
+  cfg.version = 20;
   return cfg;
 }
 
@@ -798,6 +806,222 @@ function drawVignette(ctx, x, y, w, h, f){
   ctx.save(); ctx.fillStyle=g; ctx.fillRect(x,y,w,h); ctx.restore();
 }
 
+/* ══════════════════════════════════════════
+   색감 파일 — 라이트룸·포토샵에서 만든 색감을 가져옵니다
+   *.cube  포토샵·다빈치 등의 3D 룩업 테이블(LUT). 가장 정확합니다.
+   *.xmp   라이트룸 프리셋. 노출·대비·톤·채도·색온도·톤 커브를 비슷하게 옮깁니다(근사).
+   *.acv   포토샵 곡선 파일.
+   셋 다 33×33×33 칸의 룩업 테이블로 바꿔 보정에 붙입니다. 사진의 픽셀마다 테이블에서 색을 찾아 바꿉니다.
+   ══════════════════════════════════════════ */
+var LUT_N = 33;
+var lutCache = {};
+function u16ToB64(u){
+  var u8=new Uint8Array(u.buffer, u.byteOffset, u.byteLength), s="", CH=0x8000;
+  for (var i=0;i<u8.length;i+=CH) s+=String.fromCharCode.apply(null, u8.subarray(i,i+CH));
+  return btoa(s);
+}
+function b64ToU16(b){
+  var s=atob(b), u8=new Uint8Array(s.length);
+  for (var i=0;i<s.length;i++) u8[i]=s.charCodeAt(i);
+  return new Uint16Array(u8.buffer);
+}
+function lutData(L){ return lutCache[L.id] || (lutCache[L.id] = b64ToU16(L.data)); }
+
+/* n³ 칸 테이블에서 (r,g,b: 0~1) 자리의 색을 3선형 보간으로 읽습니다 */
+function sampleLut(fl, n, r, g, b, out){
+  var n1=n-1, x=r*n1, y=g*n1, z=b*n1;
+  var x0=Math.min(n1-1,Math.max(0,x|0)), y0=Math.min(n1-1,Math.max(0,y|0)), z0=Math.min(n1-1,Math.max(0,z|0));
+  var fx=x-x0, fy=y-y0, fz=z-z0, i=((z0*n+y0)*n+x0)*3, dx=3, dy=n*3, dz=n*n*3;
+  for (var c=0;c<3;c++){
+    var a=fl[i+c], bx=fl[i+dx+c], by=fl[i+dy+c], bxy=fl[i+dx+dy+c];
+    var az=fl[i+dz+c], bxz=fl[i+dz+dx+c], byz=fl[i+dz+dy+c], bxyz=fl[i+dz+dx+dy+c];
+    var c0=(a+(bx-a)*fx)+((by+(bxy-by)*fx)-(a+(bx-a)*fx))*fy;
+    var c1=(az+(bxz-az)*fx)+((byz+(bxyz-byz)*fx)-(az+(bxz-az)*fx))*fy;
+    out[c]=c0+(c1-c0)*fz;
+  }
+}
+function resampleLut(fl, n, m){
+  var out=new Float32Array(m*m*m*3), px=[0,0,0], k=0, s=1/(m-1);
+  for (var b=0;b<m;b++) for (var g=0;g<m;g++) for (var r=0;r<m;r++){
+    sampleLut(fl, n, r*s, g*s, b*s, px); out[k++]=px[0]; out[k++]=px[1]; out[k++]=px[2];
+  }
+  return out;
+}
+/* fl: n³·3 개의 0~1 값, 빨강이 가장 빨리 변하는 순서(.cube 와 같음). 33 보다 크면 33 으로 줄여 저장합니다. */
+function lutFromFloats(name, kind, n, fl, note){
+  if (n > LUT_N){ fl = resampleLut(fl, n, LUT_N); n = LUT_N; }
+  var u=new Uint16Array(fl.length);
+  for (var i=0;i<fl.length;i++) u[i]=Math.max(0, Math.min(65535, Math.round(fl[i]*65535)));
+  var L = { id:"L"+Date.now()+Math.floor(Math.random()*1000), name:name, kind:kind, size:n, data:u16ToB64(u) };
+  if (note) L.note = note;
+  return L;
+}
+/* 함수 fn(r,g,b)→[r,g,b] (0~1)를 테이블로 굽습니다 */
+function bakeLut(fn, n){
+  var fl=new Float32Array(n*n*n*3), k=0, s=1/(n-1);
+  for (var b=0;b<n;b++) for (var g=0;g<n;g++) for (var r=0;r<n;r++){
+    var o=fn(r*s, g*s, b*s); fl[k++]=o[0]; fl[k++]=o[1]; fl[k++]=o[2];
+  }
+  return fl;
+}
+
+/* 사진(캔버스)에 테이블을 입힙니다. f.lutAmount 는 원래 색과 섞는 정도(0~100). */
+function lutInto(cv, f){
+  var L=f.lut; if (!L || !L.data) return;
+  var amt=(f.lutAmount===undefined ? 100 : f.lutAmount)/100; if (amt<=0) return;
+  var T=lutData(L), n=L.size, n1=n-1, sc=n1/255, k=255/65535, dy=n*3, dz=n*n*3;
+  var ctx=cv.getContext("2d"), img;
+  try { img=ctx.getImageData(0,0,cv.width,cv.height); } catch(e){ return; }
+  var p=img.data;
+  for (var i=0;i<p.length;i+=4){
+    var x=p[i]*sc, y=p[i+1]*sc, z=p[i+2]*sc;
+    var x0=x|0, y0=y|0, z0=z|0;
+    if (x0>=n1) x0=n1-1; if (y0>=n1) y0=n1-1; if (z0>=n1) z0=n1-1;
+    var fx=x-x0, fy=y-y0, fz=z-z0, j=((z0*n+y0)*n+x0)*3;
+    for (var c=0;c<3;c++){
+      var a=T[j+c], bx=T[j+3+c], by=T[j+dy+c], bxy=T[j+dy+3+c];
+      var az=T[j+dz+c], bxz=T[j+dz+3+c], byz=T[j+dz+dy+c], bxyz=T[j+dz+dy+3+c];
+      var ab=a+(bx-a)*fx, cd=by+(bxy-by)*fx, ef=az+(bxz-az)*fx, gh=byz+(bxyz-byz)*fx;
+      var c0=ab+(cd-ab)*fy, c1=ef+(gh-ef)*fy;
+      var o=(c0+(c1-c0)*fz)*k;
+      p[i+c] += (o-p[i+c])*amt;
+    }
+  }
+  ctx.putImageData(img,0,0);
+}
+
+/* ── *.cube ── */
+function parseCube(text){
+  var n=0, vals=[], lines=text.split(/\r?\n/);
+  for (var i=0;i<lines.length;i++){
+    var s=lines[i].trim(); if (!s || s.charAt(0)==="#") continue;
+    var m=/^LUT_3D_SIZE\s+(\d+)/i.exec(s);
+    if (m){ n=parseInt(m[1],10); continue; }
+    if (/^LUT_1D_SIZE/i.test(s)) throw new Error("1D 룩업 테이블(.cube)은 지원하지 않습니다. 3D 로 내보내 주세요.");
+    if (/^[A-Za-z_]/.test(s)) continue;     // TITLE, DOMAIN_MIN, DOMAIN_MAX …
+    var q=s.split(/\s+/);
+    if (q.length>=3){ var a=+q[0], b=+q[1], c=+q[2]; if (isFinite(a)&&isFinite(b)&&isFinite(c)) vals.push(a,b,c); }
+  }
+  if (n<2 || vals.length!==n*n*n*3) throw new Error("이 .cube 파일을 읽지 못했습니다(격자 "+n+", 값 "+(vals.length/3)+"개).");
+  return { size:n, floats:Float32Array.from(vals) };
+}
+
+/* ── 곡선: 점들을 부드럽게 잇는 256칸 표(0~1). 단조 3차 보간이라 곡선이 출렁이지 않습니다 ── */
+function curveTable(pts, scale){
+  pts=pts.slice().sort(function(a,b){ return a[0]-b[0]; });
+  var xs=[], ys=[], t=new Float32Array(256), i;
+  for (i=0;i<pts.length;i++){
+    if (xs.length && pts[i][0]/scale===xs[xs.length-1]) continue;
+    xs.push(pts[i][0]/scale); ys.push(pts[i][1]/scale);
+  }
+  var n=xs.length;
+  if (n<2){ for (i=0;i<256;i++) t[i]=i/255; return t; }
+  var d=[], m=[];
+  for (i=0;i<n-1;i++) d[i]=(ys[i+1]-ys[i])/(xs[i+1]-xs[i]);
+  m[0]=d[0]; m[n-1]=d[n-2];
+  for (i=1;i<n-1;i++) m[i]=(d[i-1]*d[i]<=0) ? 0 : (d[i-1]+d[i])/2;
+  for (i=0;i<n-1;i++){
+    if (d[i]===0){ m[i]=0; m[i+1]=0; continue; }
+    var a=m[i]/d[i], b=m[i+1]/d[i], s=a*a+b*b;
+    if (s>9){ var tt=3/Math.sqrt(s); m[i]=tt*a*d[i]; m[i+1]=tt*b*d[i]; }
+  }
+  for (var k=0;k<256;k++){
+    var x=k/255, y;
+    if (x<=xs[0]) y=ys[0];
+    else if (x>=xs[n-1]) y=ys[n-1];
+    else {
+      var j=0; while (j<n-2 && x>=xs[j+1]) j++;
+      var h=xs[j+1]-xs[j], u=(x-xs[j])/h, u2=u*u, u3=u2*u;
+      y=(2*u3-3*u2+1)*ys[j]+(u3-2*u2+u)*h*m[j]+(-2*u3+3*u2)*ys[j+1]+(u3-u2)*h*m[j+1];
+    }
+    t[k]=Math.max(0,Math.min(1,y));
+  }
+  return t;
+}
+function tabAt(t, v){
+  var x=Math.max(0,Math.min(1,v))*255, i=x|0;
+  return i>=255 ? t[255] : t[i]+(t[i+1]-t[i])*(x-i);
+}
+
+/* ── *.acv (포토샵 곡선) ── 곡선 순서: 전체(RGB), 빨강, 초록, 파랑 */
+function acvLook(buf){
+  var v=new DataView(buf), cnt=v.getUint16(2), pos=4, curves=[];
+  if (cnt<1 || cnt>32) throw new Error("이 .acv 파일을 읽지 못했습니다.");
+  for (var c=0;c<cnt;c++){
+    var np=v.getUint16(pos); pos+=2; var pts=[];
+    for (var j=0;j<np;j++){ var out=v.getUint16(pos), inp=v.getUint16(pos+2); pos+=4; pts.push([inp,out]); }
+    curves.push(pts);
+  }
+  var id=[]; for (var i=0;i<256;i++) id.push(i/255);
+  function tab(k){ return (curves[k] && curves[k].length>=2) ? curveTable(curves[k],255) : null; }
+  var tm=tab(0), tr=tab(1), tg=tab(2), tb=tab(3);
+  return bakeLut(function(r,g,b){
+    if (tr) r=tabAt(tr,r); if (tg) g=tabAt(tg,g); if (tb) b=tabAt(tb,b);
+    if (tm){ r=tabAt(tm,r); g=tabAt(tm,g); b=tabAt(tm,b); }
+    return [r,g,b];
+  }, LUT_N);
+}
+
+/* ── *.xmp (라이트룸 프리셋) ── 같은 값을 쓰는 포토샵 카메라 로우와 완전히 같게는 못 옮깁니다.
+   노출·대비·하이라이트·섀도·화이트·블랙·채도·생동감·색온도·색조·흑백 변환·톤 커브(전체·RGB)만 비슷하게 옮깁니다. */
+function xmpLook(text){
+  var doc=new DOMParser().parseFromString(text, "application/xml");
+  if (doc.getElementsByTagName("parsererror").length) throw new Error("이 .xmp 파일을 읽지 못했습니다.");
+  var d=doc.getElementsByTagName("rdf:Description")[0];
+  if (!d) throw new Error("라이트룸 프리셋(.xmp)이 아닌 것 같습니다.");
+  function A(k){
+    var v=d.getAttribute("crs:"+k);
+    if (v===null){ var e=d.getElementsByTagName("crs:"+k)[0]; v=e ? e.textContent.trim() : null; }
+    return v;
+  }
+  function N(k){ var v=parseFloat(A(k)); return isFinite(v) ? v : 0; }
+  function curve(k){
+    var e=d.getElementsByTagName("crs:"+k)[0]; if (!e) return null;
+    var li=e.getElementsByTagName("rdf:li"), pts=[];
+    for (var i=0;i<li.length;i++){ var xy=li[i].textContent.split(","); if (xy.length>=2) pts.push([parseFloat(xy[0]),parseFloat(xy[1])]); }
+    return pts.length>=2 ? curveTable(pts,255) : null;
+  }
+  var ex=N("Exposure2012"), ct=N("Contrast2012")/100, hi=N("Highlights2012")/100, sh=N("Shadows2012")/100,
+      wh=N("Whites2012")/100, bl=N("Blacks2012")/100, sat=N("Saturation")/100, vib=N("Vibrance")/100,
+      tmp=N("Temperature"), tnt=N("Tint"), gray=(A("ConvertToGrayscale")==="True");
+  var tm=curve("ToneCurvePV2012"), tr=curve("ToneCurvePV2012Red"), tg=curve("ToneCurvePV2012Green"), tb=curve("ToneCurvePV2012Blue");
+  // 색온도는 -100~100 일 때만 상대값으로 봅니다(라이트룸이 JPEG 에 쓰는 값). 켈빈 값은 건너뜁니다.
+  var gR=1, gG=1, gB=1;
+  if (Math.abs(tmp)<=100){ gR=1+tmp/100*0.22; gB=1-tmp/100*0.22; }
+  if (Math.abs(tnt)<=150){ gG=1-tnt/150*0.12; }
+  function lin(v){ return v<=0.04045 ? v/12.92 : Math.pow((v+0.055)/1.055,2.4); }
+  function enc(v){ v=Math.max(0,Math.min(1,v)); return v<=0.0031308 ? v*12.92 : 1.055*Math.pow(v,1/2.4)-0.055; }
+  function sstep(a,b,x){ x=(x-a)/(b-a); x=x<0?0:(x>1?1:x); return x*x*(3-2*x); }
+  var gain=Math.pow(2,ex);
+  var fl=bakeLut(function(r,g,b){
+    r=enc(lin(r)*gain*gR); g=enc(lin(g)*gain*gG); b=enc(lin(b)*gain*gB);
+    var Y=0.2126*r+0.7152*g+0.0722*b;
+    var adj=hi*0.22*sstep(0.45,1,Y) + sh*0.22*(1-sstep(0,0.55,Y)) + wh*0.14*sstep(0.7,1,Y) + bl*0.14*(1-sstep(0,0.3,Y));
+    r+=adj; g+=adj; b+=adj;
+    if (ct){
+      r+=(sstep(0,1,r)-r)*ct*1.1; g+=(sstep(0,1,g)-g)*ct*1.1; b+=(sstep(0,1,b)-b)*ct*1.1;
+    }
+    Y=0.2126*r+0.7152*g+0.0722*b;
+    var mx=Math.max(r,g,b), mn=Math.min(r,g,b), s0=mx>0 ? (mx-mn)/mx : 0, k=1+sat+vib*(1-s0);
+    r=Y+(r-Y)*k; g=Y+(g-Y)*k; b=Y+(b-Y)*k;
+    if (gray){ r=g=b=Y; }
+    r=Math.max(0,Math.min(1,r)); g=Math.max(0,Math.min(1,g)); b=Math.max(0,Math.min(1,b));
+    if (tr) r=tabAt(tr,r); if (tg) g=tabAt(tg,g); if (tb) b=tabAt(tb,b);
+    if (tm){ r=tabAt(tm,r); g=tabAt(tm,g); b=tabAt(tm,b); }
+    return [r,g,b];
+  }, LUT_N);
+  // 옮기지 못한 항목이 있으면 알려 줍니다
+  var skipped=[], at=d.attributes;
+  for (var i=0;i<at.length;i++){
+    var nm=at[i].name.replace("crs:",""), val=parseFloat(at[i].value);
+    if (/^(HueAdjustment|SaturationAdjustment|LuminanceAdjustment|SplitToning|ColorGrade)/.test(nm) && isFinite(val) && val!==0){
+      var label=/Split|ColorGrade/.test(nm) ? "색 분리·컬러 그레이딩" : "HSL";
+      if (skipped.indexOf(label)<0) skipped.push(label);
+    }
+  }
+  return { floats:fl, note:"근사"+(skipped.length ? " · "+skipped.join("·")+" 는 빠짐" : "") };
+}
+
 /* 얼굴 줄이기 — 포토샵 유동화의 오목(Pucker)처럼 타원 안쪽을 가운데로 모읍니다.
    타원 밖은 그대로이고, 경계로 갈수록 부드럽게 원래 자리로 돌아갑니다.
    s = {amount 0~100, x·y 가운데 위치(그림의 %), size 타원 너비(그림 너비의 %)} */
@@ -858,6 +1082,7 @@ function drawLook(out, src, f, mirror, slim){
   slimInto(out, slim);
   softenInto(out, out, f);
   overlayInto(ox, W, H, f);
+  lutInto(out, f);        // 가져온 색감 파일(*.cube *.xmp *.acv)
 }
 
 /* 실시간 미리보기 — 비디오를 작게 줄여 매 프레임 drawLook 으로 그립니다.
@@ -978,7 +1203,10 @@ function setResult(blob){
   $("resultImg").src = lastResultUrl;
 }
 function freeCanvases(list){
-  (list||[]).forEach(function(c){ if (c && c.width){ c.width=0; c.height=0; } });
+  (list||[]).forEach(function(c){
+    if (c && c.__lk){ for (var k in c.__lk.map) free(c.__lk.map[k]); c.__lk=null; }
+    if (c && c.width){ c.width=0; c.height=0; }
+  });
 }
 
 function ticks(done,total){
@@ -1041,7 +1269,29 @@ function drawCover(ctx, src, x, y, w, h){
   if (cw>sw){ cw=sw; ch=sw/ar; }
   ctx.drawImage(src,(sw-cw)/2,(sh-ch)/2,cw,ch,x,y,w,h);
 }
-function renderPrint(L, shots){
+/* 고르기 화면에서 손님이 고른 색감을 입힌 사진. 인화에는 어차피 칸 크기로 잘려 들어가니, 칸 크기(w×h)로 먼저
+   줄이고 거기에 색감을 입힙니다(원본 160만 픽셀에 입히는 것보다 훨씬 빠르고 결과는 같습니다).
+   같은 사진·같은 색감·같은 칸 크기면 다시 안 만듭니다. */
+function lookKey(f){
+  return [f.id,f.brightness,f.contrast,f.saturate,f.sepia,f.hue,f.smooth,f.detail,f.fade,f.vignette,
+          f.tint ? f.tint.color+f.tint.mode+f.tint.amount : "", f.lut ? f.lut.id : "", f.lutAmount].join("|");
+}
+function lookCanvas(src, f, w, h){
+  w=Math.max(1,Math.round(w)); h=Math.max(1,Math.round(h));
+  var key=lookKey(f)+"|"+w+"x"+h, mem=src.__lk || (src.__lk={ keys:[], map:{} });
+  if (mem.map[key]) return mem.map[key];
+  var tmp=document.createElement("canvas"); tmp.width=w; tmp.height=h;
+  drawCover(tmp.getContext("2d"), src, 0, 0, w, h);
+  var out=document.createElement("canvas"); out.width=w; out.height=h;
+  drawLook(out, tmp, f, false, null);
+  free(tmp);
+  // 칸 크기라 작아서 색감 3개쯤은 다 기억해 둡니다(번갈아 눌러도 다시 안 그림). 많아지면 오래된 것부터 비웁니다.
+  mem.map[key]=out; mem.keys.push(key);
+  while (mem.keys.length>8){ var old=mem.keys.shift(); free(mem.map[old]); delete mem.map[old]; }
+  return out;
+}
+/* lk: 입힐 색감(없으면 사진 그대로). 카메라로 찍은 사진은 찍을 때 이미 보정이 들어가 있어 lk 를 주지 않습니다. */
+function renderPrint(L, shots, lk){
   var c=document.createElement("canvas");
   c.width=L.canvas.w; c.height=L.canvas.h;
   var ctx=c.getContext("2d");
@@ -1053,10 +1303,11 @@ function renderPrint(L, shots){
       var bg=r[0], fr=r[1];
       if (bg) ctx.drawImage(bg.img, 0,0, c.width, c.height);
 
-      var look = activeFilter();
+      var look = lk || activeFilter();
       L.slots.forEach(function(s){
         var src = shots[s.shot % shots.length];
         if (!src) return;
+        if (lk) src = lookCanvas(src, lk, s.w, s.h);
         drawCover(ctx, src, s.x, s.y, s.w, s.h);
         // 비네팅은 칸마다 겁니다. 촬영 화면에서 보이던 것과 같은 모양이 됩니다.
         drawVignette(ctx, s.x, s.y, s.w, s.h, look);
@@ -1091,10 +1342,31 @@ function setPrintPage(L){
 /* ── 사진 고르기 ──────────────────────────
    찍은 사진을 격자로 보여주고, 손님이 누른 순서대로 1번 칸, 2번 칸… 에 넣습니다.
    고를 때마다 인화지를 다시 그려 왼쪽에 보여줍니다. */
-var P = { L:null, need:0, picks:[], url:null, token:0,
+var P = { L:null, need:0, picks:[], url:null, token:0, look:null,
           live:false, liveId:0, timer:null, seen:{}, fails:0, err:"", maxStamp:0 };
 var liveSession = false;   // 이번 손님이 맥에서 실시간으로 받은 사진으로 만들고 있는지
 var orientFixed = false;   // 가로·세로를 첫 화면에서 골랐는지(그러면 고르기 화면에 가로·세로 버튼을 안 둡니다)
+/* 컷 버튼 옆의 색감 버튼 — 관리자에서 '고르기 화면에 보이기'를 켠 보정(최대 3개).
+   카메라로 찍은 사진은 찍을 때 보정이 이미 들어갔으니, 불러온·실시간 사진(P.imported)일 때만 보입니다. */
+var pickLookId = null;
+function pickLooks(){ return allFilters().filter(function(f){ return f.pick; }).slice(0,3); }
+function lookChips(){
+  var looks=pickLooks(), on=P.imported && looks.length>0;
+  $("pickLooks").hidden = !on; $("pickSep").hidden = !on;
+  if (!on){ P.look=null; return; }
+  if (!looks.some(function(l){ return l.id===pickLookId; })) pickLookId=looks[0].id;
+  buildChips($("pickLooks"), looks, pickLookId, false);
+  P.look=filterById(pickLookId);
+}
+$("pickLooks").addEventListener("click", function(e){
+  var b=e.target.closest(".chip"); if(!b) return;
+  pickLookId=b.dataset.v; P.look=filterById(pickLookId);
+  pressOnly($("pickLooks"), pickLookId);
+  refreshPick();
+});
+/* 컷·색감 버튼 줄의 실제 높이를 재서 필름 크기 계산(CSS --rowh)에 알려 줍니다. 좁아서 줄이 바뀌면 필름이 그만큼 줄어듭니다. */
+function fitPick(){ pickEl.style.setProperty("--rowh", ($("pickRow").offsetHeight || 37)+"px"); }
+window.addEventListener("resize", fitPick);
 function addPickThumb(c, i){
   var b=document.createElement("button");
   b.className="pk"; b.dataset.i=i; b.setAttribute("aria-pressed","false");
@@ -1120,10 +1392,12 @@ function openPick(L, need, imported){
   pickEl.classList.toggle("withOrient", !$("pickOrient").hidden);   // 가로·세로 버튼이 있으면 필름을 조금 작게(자리 확보)
   if (P.imported && !orientFixed) buildChips($("pickOrient"), instaxOrients().map(function(o){ return {id:o, name:o==="h" ? "가로" : "세로"}; }), instaxOrient, false);
   if (instaxOn()){ pickChips(); printerStatus(); }
+  pickLookId = null; lookChips();      // 손님마다 첫 번째 색감에서 시작합니다
   $("pickGrid").innerHTML = "";
   S.shots.forEach(function(c, i){ addPickThumb(c, i); });
   $("pickFromPhotos").hidden = true; $("pickEmpty").hidden = true;   // 맥에서 받는 중일 때만 openLive 가 켭니다
   show(pickEl);
+  fitPick();
   refreshPick();
 }
 function refreshPick(){
@@ -1138,7 +1412,7 @@ function refreshPick(){
   // 아직 안 고른 칸은 비워 둔 채로 그립니다
   var shots=[]; for (var k=0;k<P.need;k++) shots.push(S.shots[P.picks[k]]);
   var token=++P.token;
-  renderPrint(P.L, shots).then(function(blob){
+  renderPrint(P.L, shots, P.look).then(function(blob){
     if (token!==P.token) return;   // 빨리 여러 번 누르면 마지막 것만 보여줍니다
     if (P.url) URL.revokeObjectURL(P.url);
     P.url=URL.createObjectURL(blob); $("pickPrev").src=P.url;
@@ -1299,7 +1573,7 @@ $("pickDone").addEventListener("click", function(){
   if (P.picks.length<P.need) return;
   var shots=P.picks.map(function(i){ return S.shots[i]; });
   $("pickDone").disabled=true;
-  renderPrint(P.L, shots).then(function(blob){
+  renderPrint(P.L, shots, P.look).then(function(blob){
     setResult(blob);
     closePick(); freeCanvases(S.shots); S.shots=[];
     setPrintPage(P.L); show(resultEl);
@@ -1594,7 +1868,7 @@ function renderFilterList(){
   $("filterList").innerHTML = allFilters().map(function(f,i){
     return '<button class="lrow" data-i="'+i+'" aria-pressed="'+(i===fIdx)+'">'+
       '<span class="nm">'+f.name+'</span>'+
-      '<span class="off">'+(f.enabled?'':'숨김')+'</span></button>';
+      '<span class="off">'+(f.pick ? '★ 고르기 화면' : '')+(f.lut ? ' 파일' : '')+(f.enabled ? '' : (f.pick ? '' : '숨김'))+'</span></button>';
   }).join("");
   fillLookSelect();      // 보정 이름이 바뀌면 인화 방식의 필름 목록도 같이 바뀝니다
 }
@@ -1610,6 +1884,13 @@ function renderFilterFields(){
   var f=F();
   $("fName").value=f.name;
   $("fEnabled").checked=!!f.enabled;
+  $("fPick").checked=!!f.pick;
+  var LU=f.lut, amt=(f.lutAmount===undefined ? 100 : f.lutAmount);
+  $("fLutInfo").textContent = LU
+    ? "가져온 색감: "+LU.name+" ("+(LU.kind==="cube" ? "*.cube "+LU.size+"³" : "*."+LU.kind)+(LU.note ? " · "+LU.note : "")+")"
+    : "가져온 색감 파일이 없습니다.";
+  $("fLutClear").hidden = !LU; $("fLutMore").hidden = !LU;
+  $("fLutAmt").value=amt; $("fLutAmtOut").textContent=amt;
   SLIDERS.forEach(function(s){
     var v = (f[s.k]===undefined) ? s.def : f[s.k];
     $("sl_"+s.k).value=v; $("out_"+s.k).textContent=v;
@@ -1632,6 +1913,43 @@ $("fEnabled").addEventListener("change", function(e){
   if (!on && CFG.filter===F().id) CFG.filter = shownFilters()[0].id;
   buildChips($("filters"), shownFilters(), CFG.filter, false);
 });
+$("fPick").addEventListener("change", function(e){
+  var on=e.target.checked;
+  if (on && allFilters().filter(function(x){ return x.pick && x!==F(); }).length>=3){
+    e.target.checked=false; say("고르기 화면에는 색감을 3개까지 보여줄 수 있습니다. 다른 색감의 체크를 먼저 풀어 주세요.", 6000); return;
+  }
+  F().pick=on; renderFilterList(); saveConfig();
+});
+/* 색감 파일 가져오기: *.cube *.xmp *.acv */
+$("fLutBtn").addEventListener("click", function(){ $("fLutFile").value=""; $("fLutFile").click(); });
+$("fLutFile").addEventListener("change", function(e){
+  var file=e.target.files && e.target.files[0]; if (!file) return;
+  var ext=(file.name.split(".").pop()||"").toLowerCase(), base=file.name.replace(/\.[^.]+$/,"").slice(0,24);
+  var rd=new FileReader();
+  rd.onerror=function(){ say("파일을 읽지 못했습니다.", 5000); };
+  rd.onload=function(){
+    try{
+      var lut;
+      if (ext==="cube"){ var c=parseCube(rd.result); lut=lutFromFloats(base,"cube",c.size,c.floats); }
+      else if (ext==="xmp"){ var x=xmpLook(rd.result); lut=lutFromFloats(base,"xmp",LUT_N,x.floats,x.note); }
+      else if (ext==="acv"){ lut=lutFromFloats(base,"acv",LUT_N,acvLook(rd.result)); }
+      else throw new Error("*.cube *.xmp *.acv 파일만 가져올 수 있습니다.");
+      var f=F(); f.lut=lut; f.lutAmount=100;
+      if (/^(새 보정|이름 없음)/.test(f.name)) f.name=base.slice(0,12);
+      renderFilterFields(); renderFilterList(); renderCompare(); saveConfig();
+      say("‘"+base+"’ 색감을 가져왔습니다.", 4000);
+    } catch(err){ say(err.message || "색감 파일을 읽지 못했습니다.", 8000); }
+  };
+  if (ext==="acv") rd.readAsArrayBuffer(file); else rd.readAsText(file);
+});
+$("fLutClear").addEventListener("click", function(){
+  var f=F(); delete f.lut; delete f.lutAmount;
+  renderFilterFields(); renderFilterList(); renderCompare(); saveConfig();
+});
+$("fLutAmt").addEventListener("input", function(e){
+  F().lutAmount=Number(e.target.value); $("fLutAmtOut").textContent=e.target.value; renderCompare();
+});
+$("fLutAmt").addEventListener("change", saveConfig);
 $("fAdd").addEventListener("click", function(){
   CFG.filters = allFilters().concat([newFilter({name:"새 보정", brightness:105, smooth:30})]);
   fIdx=CFG.filters.length-1; CFG.filter=F().id;
