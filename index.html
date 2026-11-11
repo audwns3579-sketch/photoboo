@@ -151,7 +151,19 @@ label.lab{display:flex;flex-direction:column;gap:5px;font-size:11px;letter-spaci
 
 /* ── 2-1. 사진 고르기 ─────────────────── */
 #pick{justify-content:center;align-items:center;gap:14px;padding-block:18px;overflow-y:auto}
-.pick-body{display:flex;gap:24px;align-items:center;justify-content:center;width:100%;flex-wrap:wrap}
+.pick-body{display:flex;gap:36px;align-items:center;justify-content:center;width:100%;flex-wrap:wrap}
+.pick-left,.pick-side{display:flex;flex-direction:column;align-items:center;gap:16px}
+.pick-actions{display:flex;gap:10px;width:100%;max-width:420px}
+.pick-actions .btn{min-height:60px;font-size:18px}
+#pickDone{flex:1}
+/* 가로 화면에서는 좌우로 나란히. 세로 화면은 위아래로 쌓입니다. */
+@media (min-aspect-ratio:1/1){
+  .pick-body{flex-wrap:nowrap}
+  .pick-left{flex:1 1 0;min-width:0;max-width:540px}
+  .pick-left .pick-grid{width:100%}
+  #pick.instax .pick-side .film{--fw:min(40vw, 54vh*1.256)}
+  #pick.instax .pick-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
 #pickPrev{max-height:62vh;max-width:min(42vw,100%);width:auto;background:#fff;border-radius:3px;
   box-shadow:0 18px 50px rgba(0,0,0,.6),0 0 0 1px var(--line)}
 .pick-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;width:min(100%,540px)}
@@ -363,16 +375,21 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;
 
 <!-- 2-1. 사진 고르기 (많이 찍고 고르기) -->
 <section class="screen" id="pick" hidden>
-  <p class="eyebrow" id="pickTitle">사진 고르기</p>
-  <div class="chips" id="pickFrames" role="group" aria-label="프레임" hidden style="justify-content:center"></div>
+  <!-- MEI 부스처럼: 왼쪽에 찍은 사진, 오른쪽에 컷 수 · 인화 미리보기 · 인화 버튼 -->
+  <h2 class="ask" id="pickTitle">사진 고르기</h2>
   <div class="pick-body">
-    <div class="film" id="pickFilm"><img id="pickPrev" alt="고른 사진으로 만든 인화 미리보기"></div>
-    <div class="pick-grid" id="pickGrid" role="group" aria-label="찍은 사진"></div>
-  </div>
-  <p class="hint">누른 순서대로 1번 칸, 2번 칸에 들어갑니다. 다시 누르면 빠집니다.</p>
-  <div class="row" style="justify-content:center">
-    <button class="btn primary" id="pickDone" disabled>이 사진으로 완성</button>
-    <button class="btn ghost" id="pickQuit">처음으로</button>
+    <div class="pick-left">
+      <div class="pick-grid" id="pickGrid" role="group" aria-label="찍은 사진"></div>
+      <p class="hint">누른 순서대로 1번 칸, 2번 칸에 들어갑니다. 다시 누르면 빠집니다.</p>
+    </div>
+    <div class="pick-side">
+      <div class="chips" id="pickFrames" role="group" aria-label="프레임" hidden></div>
+      <div class="film" id="pickFilm"><img id="pickPrev" alt="고른 사진으로 만든 인화 미리보기"></div>
+      <div class="pick-actions">
+        <button class="btn primary" id="pickDone" disabled>이 사진으로 완성</button>
+        <button class="btn ghost" id="pickQuit">처음으로</button>
+      </div>
+    </div>
   </div>
 </section>
 

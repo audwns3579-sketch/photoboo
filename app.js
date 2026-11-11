@@ -1165,8 +1165,9 @@ function refreshPick(){
     b.setAttribute("aria-pressed", String(at>=0));
     b.lastChild.textContent = at>=0 ? at+1 : "";
   });
-  $("pickTitle").textContent = (instaxOn() ? "컷 수와 사진 고르기 — " : "사진 고르기 — ")+P.picks.length+" / "+P.need;
+  $("pickTitle").textContent = (instaxOn() ? "컷 수와 사진을 골라주세요 — " : "사진을 골라주세요 — ")+P.picks.length+" / "+P.need;
   $("pickDone").disabled = P.picks.length < P.need;
+  $("pickDone").textContent = instaxOn() ? "인화하기" : "이 사진으로 완성";
   // 아직 안 고른 칸은 비워 둔 채로 그립니다
   var shots=[]; for (var k=0;k<P.need;k++) shots.push(S.shots[P.picks[k]]);
   var token=++P.token;
@@ -1212,6 +1213,9 @@ $("pickDone").addEventListener("click", function(){
     setResult(blob);
     closePick(); freeCanvases(S.shots); S.shots=[];
     setPrintPage(P.L); show(resultEl);
+    // 인스탁스는 MEI 부스처럼 고르기 화면에서 바로 인화합니다. 결과 화면은 나오는 동안 보여주고,
+    // 실패하면 거기서 인화 버튼으로 다시 보낼 수 있습니다.
+    if (instaxOn()) printInstax();
   });
 });
 $("pickQuit").addEventListener("click", function(){
