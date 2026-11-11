@@ -159,18 +159,24 @@ label.lab{display:flex;flex-direction:column;gap:5px;font-size:11px;letter-spaci
 .pick-actions{display:flex;gap:10px;width:100%;max-width:420px}
 .pick-actions .btn{min-height:60px;font-size:18px}
 #pickDone{flex:1}
-/* 가로 화면에서는 좌우로 나란히. 세로 화면은 위아래로 쌓입니다. */
+/* 가로 화면에서는 좌우로 나란히. 세로 화면은 위아래로 쌓입니다.
+   사진이 많아져도 오른쪽 미리보기·버튼은 그대로이고, 왼쪽 사진 목록만 자기 칸 안에서 스크롤합니다(사용자 요청). */
 @media (min-aspect-ratio:1/1){
-  .pick-body{flex-wrap:nowrap}
-  .pick-left{flex:1 1 0;min-width:0;max-width:540px}
-  .pick-left .pick-grid{width:100%}
+  #pick{overflow:hidden}
+  .pick-body{flex:1 1 0;min-height:0;flex-wrap:nowrap}
+  .pick-left{flex:1 1 0;min-width:0;max-width:540px;align-self:stretch;min-height:0;justify-content:flex-start}
+  .pick-left .pick-grid{width:100%;flex:1 1 auto;min-height:0;max-height:none;align-content:start}
+  .pick-side{flex:none}
   #pick.instax .pick-side .film{--fw:min(40vw, 54vh*1.256)}
   #pick.instax .pick-side .film.v{--fw:min(30vw, 42vh*0.796)}
   #pick.instax .pick-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
 }
 #pickPrev{max-height:62vh;max-width:min(42vw,100%);width:auto;background:#fff;border-radius:3px;
   box-shadow:0 18px 50px rgba(0,0,0,.6),0 0 0 1px var(--line)}
-.pick-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;width:min(100%,540px)}
+.pick-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;width:min(100%,540px);max-height:46vh;overflow-y:auto;overscroll-behavior:contain;padding-right:4px}
+/* 세로로 세운 화면: 사진 목록 높이·폭을 고정해서(넘치면 목록 안에서 스크롤) 사진 수와 상관없이 미리보기 자리가 안 움직입니다.
+   위의 기본 .pick-grid 규칙보다 뒤에 둬야 덮어쓰지 않습니다. */
+@media (max-aspect-ratio:1/1){ .pick-grid{height:26vh;max-height:none;align-content:start;width:min(calc(100vw - 32px),540px)} }
 .pk{position:relative;aspect-ratio:var(--ar);padding:0;border:3px solid var(--line);
   border-radius:5px;overflow:hidden;background:#000}
 .pk[aria-pressed=true]{border-color:var(--safelight)}

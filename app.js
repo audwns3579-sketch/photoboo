@@ -1214,7 +1214,10 @@ function liveGet(url, p, id){
       P.seen[p.name+"@"+p.stamp] = 1; P.maxStamp = Math.max(P.maxStamp, p.stamp);
       if (!c) return;
       if (id !== P.liveId){ freeCanvases([c]); return; }
+      // 목록 맨 아래를 보고 있었다면 새 사진이 보이게 따라 내려갑니다. 위쪽 사진을 보는 중이면 그대로 둡니다.
+      var g = $("pickGrid"), atEnd = g.scrollHeight - g.scrollTop - g.clientHeight < 140;
       S.shots.push(c); addPickThumb(c, S.shots.length-1);
+      if (atEnd) g.scrollTop = g.scrollHeight;
       pickChips(); refreshPick(); liveNote();
     });
 }
