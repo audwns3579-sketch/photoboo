@@ -7,7 +7,7 @@
    ══════════════════════════════════════════ */
 function defaultConfig(){
   return {
-    version: 14,
+    version: 15,
     brand: "STUDIO 042",
     timer: 5,
     filter: "bright",
@@ -105,7 +105,7 @@ function defaultConfig(){
           {x:0, y:0, w:1260, h:760, shot:0}
         ],
         texts: [
-          {content:"042 STUDIO  -  DAEJEON", x:26, y:792, size:18, ls:3, font:"body", align:"left", color:"#222222"}
+          {content:"042 STUDIO  -  DAEJEON", x:26, y:792, size:20, ls:6, weight:700, font:"body", align:"left", color:"#111111"}
         ],
         cut: { on:false, x:630, color:"#D8D0CA" }
       },
@@ -118,8 +118,8 @@ function defaultConfig(){
           {x:630, y:0, w:630, h:760, shot:1}
         ],
         texts: [
-          {content:"042 STUDIO  -  DAEJEON", x:26, y:792, size:18, ls:3, font:"body", align:"left", color:"#222222"},
-          {content:"042 STUDIO  -  DAEJEON", x:1234, y:792, size:18, ls:3, font:"body", align:"right", color:"#222222"}
+          {content:"042 STUDIO  -  DAEJEON", x:26, y:792, size:20, ls:6, weight:700, font:"body", align:"left", color:"#111111"},
+          {content:"042 STUDIO  -  DAEJEON", x:1234, y:792, size:20, ls:6, weight:700, font:"body", align:"right", color:"#111111"}
         ],
         cut: { on:false, x:630, color:"#D8D0CA" }
       },
@@ -134,8 +134,8 @@ function defaultConfig(){
           {x:630, y:380, w:630, h:380, shot:3}
         ],
         texts: [
-          {content:"042 STUDIO  -  DAEJEON", x:26, y:792, size:18, ls:3, font:"body", align:"left", color:"#222222"},
-          {content:"042 STUDIO  -  DAEJEON", x:1234, y:792, size:18, ls:3, font:"body", align:"right", color:"#222222"}
+          {content:"042 STUDIO  -  DAEJEON", x:26, y:792, size:20, ls:6, weight:700, font:"body", align:"left", color:"#111111"},
+          {content:"042 STUDIO  -  DAEJEON", x:1234, y:792, size:20, ls:6, weight:700, font:"body", align:"right", color:"#111111"}
         ],
         cut: { on:false, x:630, color:"#D8D0CA" }
       },
@@ -147,7 +147,7 @@ function defaultConfig(){
           {x:80, y:0, w:760, h:1260, shot:0}
         ],
         texts: [
-          {content:"042 STUDIO  -  DAEJEON", x:70, y:1240, size:18, ls:3, font:"body", align:"left", color:"#222222", rot:-90}
+          {content:"042 STUDIO  -  DAEJEON", x:70, y:1240, size:20, ls:6, weight:700, font:"body", align:"left", color:"#111111", rot:-90}
         ],
         cut: { on:false, x:420, color:"#D8D0CA" }
       },
@@ -160,8 +160,8 @@ function defaultConfig(){
           {x:80, y:630, w:760, h:630, shot:1}
         ],
         texts: [
-          {content:"042 STUDIO  -  DAEJEON", x:70, y:615, size:18, ls:3, font:"body", align:"left", color:"#222222", rot:-90},
-          {content:"042 STUDIO  -  DAEJEON", x:70, y:1240, size:18, ls:3, font:"body", align:"left", color:"#222222", rot:-90}
+          {content:"042 STUDIO  -  DAEJEON", x:70, y:615, size:20, ls:6, weight:700, font:"body", align:"left", color:"#111111", rot:-90},
+          {content:"042 STUDIO  -  DAEJEON", x:70, y:1240, size:20, ls:6, weight:700, font:"body", align:"left", color:"#111111", rot:-90}
         ],
         cut: { on:false, x:420, color:"#D8D0CA" }
       },
@@ -176,8 +176,8 @@ function defaultConfig(){
           {x:460, y:630, w:380, h:630, shot:3}
         ],
         texts: [
-          {content:"042 STUDIO  -  DAEJEON", x:70, y:615, size:18, ls:3, font:"body", align:"left", color:"#222222", rot:-90},
-          {content:"042 STUDIO  -  DAEJEON", x:70, y:1240, size:18, ls:3, font:"body", align:"left", color:"#222222", rot:-90}
+          {content:"042 STUDIO  -  DAEJEON", x:70, y:615, size:20, ls:6, weight:700, font:"body", align:"left", color:"#111111", rot:-90},
+          {content:"042 STUDIO  -  DAEJEON", x:70, y:1240, size:20, ls:6, weight:700, font:"body", align:"left", color:"#111111", rot:-90}
         ],
         cut: { on:false, x:420, color:"#D8D0CA" }
       }
@@ -252,7 +252,13 @@ function migrate(cfg){
       if (l.id === d.id && !l.frame){ l.canvas = d.canvas; l.slots = d.slots; l.texts = d.texts; }
     });
   });
-  if (cfg.version >= 8){ cfg.version = 14; return cfg; }
+  // 이름 띠 글씨를 MEI 부스처럼 굵고 까맣게, 자간을 넓게. 기본 문구 그대로인 글자만 바꿉니다.
+  if (cfg.version < 15) cfg.layouts.forEach(function(l){
+    if (l.instax) (l.texts||[]).forEach(function(t){
+      if (t.content === "042 STUDIO  -  DAEJEON"){ t.size = 20; t.ls = 6; t.weight = 700; t.color = "#111111"; }
+    });
+  });
+  if (cfg.version >= 8){ cfg.version = 15; return cfg; }
 
   // 예전 보정은 이름만 있었습니다. 같은 이름의 새 보정으로 바꿔 끼웁니다.
   if (!Array.isArray(cfg.filters) || !cfg.filters.length){
@@ -291,7 +297,7 @@ function migrate(cfg){
   if (!hasPolaroid){
     cfg.layouts.push(defaultConfig().layouts.filter(function(d){ return d.id === "polaroid"; })[0]);
   }
-  cfg.version = 14;
+  cfg.version = 15;
   return cfg;
 }
 
@@ -433,7 +439,7 @@ function shootTotal(L){ return pickMode() ? Math.max(PICK_SHOTS, needShots(L)) :
 function fontOf(t){
   return (t.font==="display")
     ? t.size+"px Anton, sans-serif"
-    : "500 "+t.size+"px 'IBM Plex Sans KR', sans-serif";
+    : (t.weight||500)+" "+t.size+"px 'IBM Plex Sans KR', sans-serif";   // weight 는 관리자 칸 없는 기본값 전용
 }
 function resolveText(s){
   return String(s).replace(/\{brand\}/g, CFG.brand).replace(/\{date\}/g, today());
@@ -2151,7 +2157,7 @@ function renderEditor(){
       'left:'+left+'px;top:'+(t.y*k)+'px;transform-origin:0 0;'+
       'transform:rotate('+(t.rot||0)+'deg) translate('+tx+',-100%);white-space:pre;'+
       'letter-spacing:'+((t.ls||0)*k)+'px;'+
-      'font-size:'+Math.max(7,t.size*k)+'px;color:'+t.color+';'+
+      'font-size:'+Math.max(7,t.size*k)+'px;font-weight:'+(t.weight||500)+';color:'+t.color+';'+
       'font-family:'+(t.font==="display"?"var(--display)":"var(--body)")+'">'+
       escapeHtml(resolveText(t.content))+'</div>';
   });
