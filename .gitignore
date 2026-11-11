@@ -1,3 +1,10 @@
 .DS_Store
 graft/
 .claude/settings.local.json
+
+# 손님 사진(후지 테더가 저장하는 DSCF*.JPG 등)이 실수로 GitHub 에 올라가지 않게 막습니다
+DSCF*
+*.JPG
+*.jpg
+*.JPEG
+*.jpeg
