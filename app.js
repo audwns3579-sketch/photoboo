@@ -7,7 +7,7 @@
    ══════════════════════════════════════════ */
 function defaultConfig(){
   return {
-    version: 18,
+    version: 19,
     brand: "STUDIO 042",
     timer: 5,
     filter: "bright",
@@ -27,8 +27,10 @@ function defaultConfig(){
          필름 창이 가장자리를 조금 가립니다(긴 쪽 양끝 약 11, 짧은 쪽 양끝 약 32). 띠는 그보다 넓게 둡니다.
          가로: 사진 0~760, 아래 띠 760~840 에 이름(왼쪽 x 26, 2·4컷은 오른쪽 x 1234도), 글자 바닥 y 792.
          세로: 왼쪽 띠 0~80, 사진 80~840. 이름은 아래에서 위로 읽게 돌려(rot -90) x 70, 아래 끝에서 시작.
-         세로 2·4컷은 문구가 둘이라 양쪽 띠로 나눕니다(사용자 요청): 왼쪽 띠 80 + 사진 80~760 + 오른쪽 띠 80,
-         오른쪽 문구는 위에서 아래로 읽게(rot 90) x 775 에서 위(y 40)부터. 오른쪽 끝 32 는 필름 창에 가려집니다. */
+         2·4컷은 문구가 둘입니다(사용자 요청). 가로는 왼쪽 문구를 왼쪽 맨 끝(x 18), 오른쪽 문구를 오른쪽 맨 끝(x 1250 오른쪽 맞춤)에 두고,
+         세로는 둘 다 왼쪽 띠에서 하나는 맨 아래(y 1242, 아래에서 위로), 하나는 맨 위(y 12, 오른쪽 맞춤)에 둡니다.
+         오른쪽 맞춤은 글자 사이 간격(ls)이 마지막 글자 뒤에도 붙어서 6~8 더 바깥으로 줘야 양쪽 끝에서 같은 거리(약 19)가 됩니다.
+         1컷은 문구가 하나라 그대로입니다. 끝에서 18 이상 띄워 필름 창이 가리는 가장자리(긴 쪽 약 11)를 피합니다. */
       {
         id: "wl1", name: "와이드 가로 1컷", enabled: true, instax: true,
         canvas: { w:1260, h:840 },
@@ -50,8 +52,8 @@ function defaultConfig(){
           {x:630, y:0, w:630, h:760, shot:1}
         ],
         texts: [
-          {content:"042 STUDIO  -  DAEJEON", x:26, y:792, size:20, ls:6, weight:700, font:"body", align:"left", color:"#111111"},
-          {content:"042 STUDIO  -  DAEJEON", x:1234, y:792, size:20, ls:6, weight:700, font:"body", align:"right", color:"#111111"}
+          {content:"042 STUDIO  -  DAEJEON", x:18, y:792, size:20, ls:6, weight:700, font:"body", align:"left", color:"#111111"},
+          {content:"042 STUDIO  -  DAEJEON", x:1250, y:792, size:20, ls:6, weight:700, font:"body", align:"right", color:"#111111"}
         ],
         cut: { on:false, x:630, color:"#D8D0CA" }
       },
@@ -66,8 +68,8 @@ function defaultConfig(){
           {x:630, y:380, w:630, h:380, shot:3}
         ],
         texts: [
-          {content:"042 STUDIO  -  DAEJEON", x:26, y:792, size:20, ls:6, weight:700, font:"body", align:"left", color:"#111111"},
-          {content:"042 STUDIO  -  DAEJEON", x:1234, y:792, size:20, ls:6, weight:700, font:"body", align:"right", color:"#111111"}
+          {content:"042 STUDIO  -  DAEJEON", x:18, y:792, size:20, ls:6, weight:700, font:"body", align:"left", color:"#111111"},
+          {content:"042 STUDIO  -  DAEJEON", x:1250, y:792, size:20, ls:6, weight:700, font:"body", align:"right", color:"#111111"}
         ],
         cut: { on:false, x:630, color:"#D8D0CA" }
       },
@@ -88,12 +90,12 @@ function defaultConfig(){
         canvas: { w:840, h:1260 },
         frame: null,
         slots: [
-          {x:80, y:0, w:680, h:630, shot:0},
-          {x:80, y:630, w:680, h:630, shot:1}
+          {x:80, y:0, w:760, h:630, shot:0},
+          {x:80, y:630, w:760, h:630, shot:1}
         ],
         texts: [
-          {content:"042 STUDIO  -  DAEJEON", x:70, y:1240, size:20, ls:6, weight:700, font:"body", align:"left", color:"#111111", rot:-90},
-          {content:"042 STUDIO  -  DAEJEON", x:775, y:40, size:20, ls:6, weight:700, font:"body", align:"left", color:"#111111", rot:90}
+          {content:"042 STUDIO  -  DAEJEON", x:70, y:1242, size:20, ls:6, weight:700, font:"body", align:"left", color:"#111111", rot:-90},
+          {content:"042 STUDIO  -  DAEJEON", x:70, y:12, size:20, ls:6, weight:700, font:"body", align:"right", color:"#111111", rot:-90}
         ],
         cut: { on:false, x:420, color:"#D8D0CA" }
       },
@@ -102,14 +104,14 @@ function defaultConfig(){
         canvas: { w:840, h:1260 },
         frame: null,
         slots: [
-          {x:80, y:0, w:340, h:630, shot:0},
-          {x:420, y:0, w:340, h:630, shot:1},
-          {x:80, y:630, w:340, h:630, shot:2},
-          {x:420, y:630, w:340, h:630, shot:3}
+          {x:80, y:0, w:380, h:630, shot:0},
+          {x:460, y:0, w:380, h:630, shot:1},
+          {x:80, y:630, w:380, h:630, shot:2},
+          {x:460, y:630, w:380, h:630, shot:3}
         ],
         texts: [
-          {content:"042 STUDIO  -  DAEJEON", x:70, y:1240, size:20, ls:6, weight:700, font:"body", align:"left", color:"#111111", rot:-90},
-          {content:"042 STUDIO  -  DAEJEON", x:775, y:40, size:20, ls:6, weight:700, font:"body", align:"left", color:"#111111", rot:90}
+          {content:"042 STUDIO  -  DAEJEON", x:70, y:1242, size:20, ls:6, weight:700, font:"body", align:"left", color:"#111111", rot:-90},
+          {content:"042 STUDIO  -  DAEJEON", x:70, y:12, size:20, ls:6, weight:700, font:"body", align:"right", color:"#111111", rot:-90}
         ],
         cut: { on:false, x:420, color:"#D8D0CA" }
       }
@@ -195,16 +197,26 @@ function migrate(cfg){
   });
   // 대기 화면에서 바로 사진 고르기(맥에서 실시간 받기)를 새로 넣었습니다. 켠 채로 시작합니다(관리자에서 끌 수 있음).
   if (cfg.version < 16 && cfg.instax && cfg.instax.live === undefined) cfg.instax.live = true;
-  // 세로 2·4컷의 문구 두 개를 양쪽 띠로 나눴습니다. 예전 기본 모양(문구 둘이 모두 왼쪽 띠) 그대로인 것만 바꿉니다.
-  if (cfg.version < 18) defaultConfig().layouts.forEach(function(d){
-    if (d.id !== "wp2" && d.id !== "wp4") return;
-    cfg.layouts.forEach(function(l){
-      var plain = !l.frame && (l.texts || []).length === 2 &&
-        l.texts.every(function(t){ return t.rot === -90 && t.x === 70; });
-      if (l.id === d.id && plain){ l.slots = d.slots; l.texts = d.texts; }
+  // 2·4컷 문구를 양 끝으로(가로) · 맨 위와 맨 아래로(세로) 옮겼습니다. 예전 기본 위치 그대로인 것만 바꾸고,
+  // 관리자에서 글자를 직접 옮겨 둔 프레임은 그대로 둡니다. 세로는 사진 칸도 예전 기본 크기로 돌립니다.
+  if (cfg.version < 19){
+    var prevText = {
+      wl2: ["26,792,0|1234,792,0"], wl4: ["26,792,0|1234,792,0"],
+      wp2: ["70,615,-90|70,1240,-90", "70,1240,-90|775,40,90"],
+      wp4: ["70,615,-90|70,1240,-90", "70,1240,-90|775,40,90"]
+    };
+    defaultConfig().layouts.forEach(function(d){
+      if (!prevText[d.id]) return;
+      cfg.layouts.forEach(function(l){
+        if (l.id !== d.id || l.frame) return;
+        var sig = (l.texts || []).map(function(t){ return t.x+","+t.y+","+(t.rot || 0); }).join("|");
+        if (prevText[d.id].indexOf(sig) < 0) return;
+        l.texts = d.texts;
+        if (d.id.charAt(1) === "p") l.slots = d.slots;
+      });
     });
-  });
-  if (cfg.version >= 8){ cfg.version = 18; return cfg; }
+  }
+  if (cfg.version >= 8){ cfg.version = 19; return cfg; }
 
   // 예전 보정은 이름만 있었습니다. 같은 이름의 새 보정으로 바꿔 끼웁니다.
   if (!Array.isArray(cfg.filters) || !cfg.filters.length){
@@ -228,7 +240,7 @@ function migrate(cfg){
     delete l.bg;
   });
   if (cfg.bgId === undefined) cfg.bgId = null;
-  cfg.version = 18;
+  cfg.version = 19;
   return cfg;
 }
 
