@@ -369,7 +369,10 @@ $("confirmYes").addEventListener("click", function(){
 });
 
 function show(el){ [setupEl,shootEl,pickEl,resultEl,adminEl].forEach(function(s){ s.hidden = s!==el; });
-  if (el===setupEl && typeof showStep==="function") showStep(1);
+  if (el===setupEl && typeof showStep==="function"){
+    showStep(1);
+    $("attractBrand").textContent = CFG.brand; $("attract").hidden = false;
+  }
   // 인스탁스는 고르기·결과 화면을 필름 모양으로 보여주고, 아래에 프린터 상태를 띄웁니다
   var film = instaxOn() && (el===pickEl || el===resultEl);
   pickEl.classList.toggle("instax", film); resultEl.classList.toggle("instax", film);
@@ -467,12 +470,12 @@ function buildModes(){
     return '<button class="mode" data-i="'+i+'" aria-pressed="'+(!instaxOn() && i===cur)+'">'+
       (L.icon ? '<img class="cam" data-cam="'+i+'" alt="">' : miniHtml(L, i))+
       '<span style="min-width:0"><span class="mode-name">'+L.name+'</span><br>'+
-      '<span class="mode-sub">'+shotCount(L)+'컷 · '+(look ? escapeHtml(look.name) : L.canvas.w+'×'+L.canvas.h)+'</span></span></button>';
+      '<span class="mode-sub">'+shotCount(L)+'컷'+(look ? ' · '+escapeHtml(look.name) : '')+'</span></span></button>';
   }).join("") + films.map(function(o){
     var cuts = instaxFrames(o).map(shotCount).join("·");
     return '<button class="mode" data-o="'+o+'" aria-pressed="'+(instaxOrient===o)+'">'+miniHtml(FILM_MINI[o], o)+
       '<span style="min-width:0"><span class="mode-name">인스탁스 '+(o==="h" ? "가로" : "세로")+'</span><br>'+
-      '<span class="mode-sub">와이드 필름 · 찍고 나서 '+cuts+'컷 고르기</span></span></button>';
+      '<span class="mode-sub">찍고 나서 '+cuts+'컷 고르기</span></span></button>';
   }).join("");
   paintMiniBackgrounds(list);
   list.forEach(function(L,i){
@@ -490,7 +493,7 @@ function lookOf(L){ return (L && L.look) ? filterById(L.look) : null; }
 function syncLook(){
   var look = lookOf(enabledLayouts()[cur]);
   $("filters").hidden = !!look;
-  $("step3Title").textContent = look ? "3 / 3 — 필름 · "+look.name : "3 / 3 — 보정";
+  $("step3Title").textContent = look ? "필름 · "+look.name : "보정을 골라주세요";
   // 필름이 없는 인화 방식으로 돌아오면, 앞 카메라의 숨긴 필름이 남지 않게 보이는 보정으로 돌립니다
   var id = look ? look.id
     : (shownFilters().some(function(f){ return f.id===CFG.filter; }) ? CFG.filter : shownFilters()[0].id);
@@ -580,21 +583,23 @@ function pressOnly(host, value){
 }
 
 /* 시작 화면은 한 번에 한 가지만 고르게 합니다: 1 인화 방식 → 2 배경 → 3 보정
+   1·2단계는 누르면 바로 넘어가서 "다음" 버튼이 없습니다.
+   올려둔 배경이 없으면 2단계(없음 하나뿐)를 건너뜁니다.
    인스탁스는 늘 많이 찍고 고르니 촬영 방식 버튼을 숨깁니다. */
 var step = 1;
 function showStep(n){
+  if (n === 2 && !allBackgrounds().length) n = step < 2 ? 3 : 1;
   step = Math.min(3, Math.max(1, n));
   Array.prototype.forEach.call(document.querySelectorAll('#setup [data-step]'), function(el){
     el.hidden = Number(el.dataset.step) !== step;
   });
   $("shootModes").hidden = $("shootModesTitle").hidden = instaxOn();
   $("backBtn").hidden  = step === 1;
-  $("nextBtn").hidden  = step === 3;
   $("startBtn").hidden = step !== 3;
   $("shotNote").hidden = step !== 3;
 }
 $("backBtn").addEventListener("click", function(){ showStep(step-1); });
-$("nextBtn").addEventListener("click", function(){ showStep(step+1); });
+$("attract").addEventListener("click", function(){ $("attract").hidden = true; showStep(1); });
 
 $("modes").addEventListener("click", function(e){
   var b=e.target.closest(".mode"); if(!b) return;
@@ -2426,6 +2431,7 @@ kvGet("config").then(function(saved){
   if (!filterById(CFG.filter) || shownFilters().map(function(f){return f.id;}).indexOf(CFG.filter)<0)
     CFG.filter = shownFilters()[0].id;
   $("brandEdit").value = CFG.brand;
+  $("attractBrand").textContent = CFG.brand;
   buildSliders();
   buildChips($("filters"), shownFilters(), CFG.filter, false);
   buildChips($("timers"), TIMERS, CFG.timer, true);
