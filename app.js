@@ -1263,11 +1263,18 @@ function runSession(){
 /* ══════════════════════════════════════════
    합성 — 관리자 설정 그대로 그립니다
    ══════════════════════════════════════════ */
-function drawCover(ctx, src, x, y, w, h){
+/* 사진에서 w×h 칸 모양으로 잘라낼 부분. src.__c = {x, y}(0~1)는 칸 가운데에 올 사진 속 자리입니다.
+   없으면 사진 가운데. 얼굴 찾기(findFaces)와 고르기 화면 미리보기 끌기(pickPrev)가 정합니다. */
+function coverBox(src, w, h){
   var sw=src.width, sh=src.height;
   var ar=w/h, cw=sh*ar, ch=sh;
   if (cw>sw){ cw=sw; ch=sw/ar; }
-  ctx.drawImage(src,(sw-cw)/2,(sh-ch)/2,cw,ch,x,y,w,h);
+  var a=src.__c || {x:.5, y:.5};
+  return { sx:Math.min(Math.max(a.x*sw-cw/2, 0), sw-cw), sy:Math.min(Math.max(a.y*sh-ch/2, 0), sh-ch), cw:cw, ch:ch };
+}
+function drawCover(ctx, src, x, y, w, h){
+  var b=coverBox(src, w, h);
+  ctx.drawImage(src,b.sx,b.sy,b.cw,b.ch,x,y,w,h);
 }
 /* 고르기 화면에서 손님이 고른 색감을 입힌 사진. 인화에는 어차피 칸 크기로 잘려 들어가니, 칸 크기(w×h)로 먼저
    줄이고 거기에 색감을 입힙니다(원본 160만 픽셀에 입히는 것보다 훨씬 빠르고 결과는 같습니다).
@@ -1278,7 +1285,7 @@ function lookKey(f){
 }
 function lookCanvas(src, f, w, h){
   w=Math.max(1,Math.round(w)); h=Math.max(1,Math.round(h));
-  var key=lookKey(f)+"|"+w+"x"+h, mem=src.__lk || (src.__lk={ keys:[], map:{} });
+  var a=src.__c, key=lookKey(f)+"|"+w+"x"+h+"|"+(a ? a.x.toFixed(4)+","+a.y.toFixed(4) : ""), mem=src.__lk || (src.__lk={ keys:[], map:{} });
   if (mem.map[key]) return mem.map[key];
   var tmp=document.createElement("canvas"); tmp.width=w; tmp.height=h;
   drawCover(tmp.getContext("2d"), src, 0, 0, w, h);
@@ -1409,15 +1416,51 @@ function refreshPick(){
   $("pickTitle").textContent = (instaxOn() ? "컷 수와 사진을 골라주세요 — " : "사진을 골라주세요 — ")+P.picks.length+" / "+P.need;
   $("pickDone").disabled = P.picks.length < P.need;
   $("pickDone").textContent = instaxOn() ? "인화하기" : "이 사진으로 완성";
+  renderPick();
+}
+/* 미리보기만 다시 그립니다. 그리는 중에 또 부르면(끌어 옮기는 중) 지금 것이 끝난 뒤 한 번만 더 그립니다. */
+function renderPick(){
+  if (P.busy){ P.again=true; return; }
+  P.busy=true; P.again=false;
   // 아직 안 고른 칸은 비워 둔 채로 그립니다
   var shots=[]; for (var k=0;k<P.need;k++) shots.push(S.shots[P.picks[k]]);
   var token=++P.token;
+  function next(){ P.busy=false; if (P.again) renderPick(); }
   renderPrint(P.L, shots, P.look).then(function(blob){
-    if (token!==P.token) return;   // 빨리 여러 번 누르면 마지막 것만 보여줍니다
-    if (P.url) URL.revokeObjectURL(P.url);
-    P.url=URL.createObjectURL(blob); $("pickPrev").src=P.url;
-  });
+    if (token===P.token){   // 그사이 고르기 화면을 닫았으면 버립니다
+      if (P.url) URL.revokeObjectURL(P.url);
+      P.url=URL.createObjectURL(blob); $("pickPrev").src=P.url;
+    }
+    next();
+  }, next);
 }
+/* 미리보기에서 칸 안의 사진을 끌어 위치를 옮깁니다. 칸보다 넘치는 쪽(가로 사진을 세로 칸에 넣으면 좌우)으로만 움직입니다. */
+var drag=null;
+$("pickPrev").addEventListener("pointerdown", function(e){
+  if (!P.L) return;
+  var r=this.getBoundingClientRect(), W=P.L.canvas.w, H=P.L.canvas.h;
+  var k=Math.max(r.width/W, r.height/H);   // 인스탁스 미리보기는 object-fit:cover 라 넘친 가장자리가 잘려 보입니다
+  var x=(e.clientX-r.left-(r.width-W*k)/2)/k, y=(e.clientY-r.top-(r.height-H*k)/2)/k;
+  var s=P.L.slots.filter(function(s){ return x>=s.x && x<s.x+s.w && y>=s.y && y<s.y+s.h; })[0];
+  var src=s && S.shots[P.picks[s.shot % P.need]];
+  if (!src) return;
+  // 끝에 닿은 채 더 민 만큼이 쌓이지 않게, 지금 실제로 보이는 자리에서 시작합니다
+  var b=coverBox(src, s.w, s.h);
+  src.__c={ x:(b.sx+b.cw/2)/src.width, y:(b.sy+b.ch/2)/src.height };
+  drag={ src:src, s:s, k:k, x:e.clientX, y:e.clientY, a:src.__c };
+  this.setPointerCapture(e.pointerId); e.preventDefault();
+});
+$("pickPrev").addEventListener("pointermove", function(e){
+  if (!drag) return;
+  var src=drag.src, sw=src.width, sh=src.height, b=coverBox(src, drag.s.w, drag.s.h);
+  var px=b.cw/drag.s.w/drag.k;   // 화면 1px 이 사진 몇 px 인지
+  function clamp(v, half){ return Math.min(Math.max(v, half), 1-half); }
+  src.__c={ x:clamp(drag.a.x-(e.clientX-drag.x)*px/sw, b.cw/2/sw), y:clamp(drag.a.y-(e.clientY-drag.y)*px/sh, b.ch/2/sh) };
+  renderPick();
+});
+function dragEnd(){ drag=null; }
+$("pickPrev").addEventListener("pointerup", dragEnd);
+$("pickPrev").addEventListener("pointercancel", dragEnd);
 function closePick(){
   liveStop(); $("pickEmpty").hidden = true;
   P.token++; $("pickGrid").innerHTML="";
@@ -1541,9 +1584,47 @@ function loadPhoto(file){
       c.width = Math.round(img.naturalWidth*sc); c.height = Math.round(img.naturalHeight*sc);
       c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
       URL.revokeObjectURL(url); resolve(c);
+      // 얼굴을 찾으면 그 자리로 옮겨 다시 그립니다. 기다리지 않고 사진은 바로 보여줍니다.
+      findFaces(c).then(function(){ if (!pickEl.hidden && S.shots.indexOf(c)>=0) renderPick(); }, function(){});
     };
     img.onerror = function(){ URL.revokeObjectURL(url); reject(); };
     img.src = url;
+  });
+}
+/* 얼굴 찾기 — 받은·불러온 사진에서 얼굴들을 찾아, 얼굴 무리의 가운데가 칸 가운데 오도록 처음 자리(c.__c)를 정합니다.
+   구글 MediaPipe 얼굴 찾기를 처음 한 번 인터넷에서 받습니다. 못 받으면 사진 가운데 그대로이고, 미리보기를 끌어 맞추면 됩니다. */
+var FACE_LIB = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
+var FACE_MODEL = "https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite";
+var faceDet = null;
+function faceDetector(){
+  return faceDet || (faceDet = import(FACE_LIB+"/vision_bundle.mjs").then(function(v){
+    return v.FilesetResolver.forVisionTasks(FACE_LIB+"/wasm").then(function(fs){
+      return v.FaceDetector.createFromOptions(fs, { baseOptions:{ modelAssetPath:FACE_MODEL }, runningMode:"IMAGE", minDetectionConfidence:0.5 });
+    });
+  }));
+}
+function findFaces(c){
+  return faceDetector().then(function(det){
+    if (!c.width || c.__c) return;   // 그사이 버렸거나, 손으로 이미 옮긴 사진
+    var w=c.width, h=c.height, side=Math.min(w,h), n=Math.min(side, 640), k=side/n, boxes=[];
+    // 얼굴 찾기는 사진을 작게 줄여서 봅니다. 3:2 를 통째로 넣으면 얼굴이 너무 작아져 못 찾으니 정사각형 두 장(앞·뒤)으로 나눠 봅니다.
+    [0, Math.max(w,h)-side].forEach(function(off){
+      var ox = w>h ? off : 0, oy = w>h ? 0 : off;
+      var t=document.createElement("canvas"); t.width=t.height=n;
+      t.getContext("2d").drawImage(c, ox, oy, side, side, 0, 0, n, n);
+      det.detect(t).detections.forEach(function(d){
+        var b=d.boundingBox;
+        boxes.push({ x:ox+b.originX*k, y:oy+b.originY*k, w:b.width*k, h:b.height*k });
+      });
+      free(t);
+    });
+    if (!boxes.length) return;
+    // 뒤쪽 포스터·작은 얼굴은 뺍니다(가장 큰 얼굴의 1/3 보다 작은 것)
+    var big=Math.max.apply(null, boxes.map(function(b){ return b.w; }));
+    boxes = boxes.filter(function(b){ return b.w >= big/3; });
+    var x0=Math.min.apply(null, boxes.map(function(b){ return b.x; })), x1=Math.max.apply(null, boxes.map(function(b){ return b.x+b.w; }));
+    var y0=Math.min.apply(null, boxes.map(function(b){ return b.y; })), y1=Math.max.apply(null, boxes.map(function(b){ return b.y+b.h; }));
+    c.__c = { x:(x0+x1)/2/w, y:(y0+y1)/2/h };
   });
 }
 $("importBtn").addEventListener("click", function(){ $("importFile").value=""; $("importFile").click(); });
