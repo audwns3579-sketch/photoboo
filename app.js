@@ -1264,11 +1264,13 @@ function runSession(){
    합성 — 관리자 설정 그대로 그립니다
    ══════════════════════════════════════════ */
 /* 사진에서 w×h 칸 모양으로 잘라낼 부분. src.__c = {x, y}(0~1)는 칸 가운데에 올 사진 속 자리입니다.
-   없으면 사진 가운데. 얼굴 찾기(findFaces)와 고르기 화면 미리보기 끌기(pickPrev)가 정합니다. */
+   없으면 사진 가운데. 얼굴 찾기(findFaces)와 고르기 화면 미리보기 끌기(pickPrev)가 정합니다.
+   src.__z(1 이상)는 키운 배율. 사진과 칸 모양이 같으면 키워야 움직일 여유가 생깁니다. */
 function coverBox(src, w, h){
-  var sw=src.width, sh=src.height;
+  var sw=src.width, sh=src.height, z=src.__z || 1;
   var ar=w/h, cw=sh*ar, ch=sh;
   if (cw>sw){ cw=sw; ch=sw/ar; }
+  cw/=z; ch/=z;
   var a=src.__c || {x:.5, y:.5};
   return { sx:Math.min(Math.max(a.x*sw-cw/2, 0), sw-cw), sy:Math.min(Math.max(a.y*sh-ch/2, 0), sh-ch), cw:cw, ch:ch };
 }
@@ -1285,7 +1287,7 @@ function lookKey(f){
 }
 function lookCanvas(src, f, w, h){
   w=Math.max(1,Math.round(w)); h=Math.max(1,Math.round(h));
-  var a=src.__c, key=lookKey(f)+"|"+w+"x"+h+"|"+(a ? a.x.toFixed(4)+","+a.y.toFixed(4) : ""), mem=src.__lk || (src.__lk={ keys:[], map:{} });
+  var a=src.__c, key=lookKey(f)+"|"+w+"x"+h+"|"+(a ? a.x.toFixed(4)+","+a.y.toFixed(4) : "")+"|"+(src.__z||1).toFixed(3), mem=src.__lk || (src.__lk={ keys:[], map:{} });
   if (mem.map[key]) return mem.map[key];
   var tmp=document.createElement("canvas"); tmp.width=w; tmp.height=h;
   drawCover(tmp.getContext("2d"), src, 0, 0, w, h);
@@ -1434,22 +1436,48 @@ function renderPick(){
     next();
   }, next);
 }
-/* 미리보기에서 칸 안의 사진을 끌어 위치를 옮깁니다. 칸보다 넘치는 쪽(가로 사진을 세로 칸에 넣으면 좌우)으로만 움직입니다. */
-var drag=null;
-$("pickPrev").addEventListener("pointerdown", function(e){
-  if (!P.L) return;
-  var r=this.getBoundingClientRect(), W=P.L.canvas.w, H=P.L.canvas.h;
+/* 미리보기에서 칸 안의 사진을 끌어 위치를 옮기고, 휠(두 손가락 스크롤)·핀치로 키웁니다.
+   사진이 칸보다 넘치는 쪽으로만 움직이니, 칸과 모양이 같은 가로 칸은 먼저 조금 키워야 움직입니다. */
+var drag=null, PICK_ZMAX=3;
+function slotAt(e){
+  var r=$("pickPrev").getBoundingClientRect(), W=P.L.canvas.w, H=P.L.canvas.h;
   var k=Math.max(r.width/W, r.height/H);   // 인스탁스 미리보기는 object-fit:cover 라 넘친 가장자리가 잘려 보입니다
   var x=(e.clientX-r.left-(r.width-W*k)/2)/k, y=(e.clientY-r.top-(r.height-H*k)/2)/k;
   var s=P.L.slots.filter(function(s){ return x>=s.x && x<s.x+s.w && y>=s.y && y<s.y+s.h; })[0];
   var src=s && S.shots[P.picks[s.shot % P.need]];
-  if (!src) return;
-  // 끝에 닿은 채 더 민 만큼이 쌓이지 않게, 지금 실제로 보이는 자리에서 시작합니다
+  return src ? { s:s, src:src, k:k } : null;
+}
+// 끝에 닿은 채 더 민 만큼이 쌓이지 않게, 지금 실제로 보이는 자리로 맞춥니다
+function settle(src, s){
   var b=coverBox(src, s.w, s.h);
   src.__c={ x:(b.sx+b.cw/2)/src.width, y:(b.sy+b.ch/2)/src.height };
-  drag={ src:src, s:s, k:k, x:e.clientX, y:e.clientY, a:src.__c };
+}
+function zoomBy(t, f){
+  t.src.__z=Math.min(Math.max((t.src.__z||1)*f, 1), PICK_ZMAX);
+  settle(t.src, t.s); renderPick();
+}
+$("pickPrev").addEventListener("pointerdown", function(e){
+  if (!P.L) return;
+  var t=slotAt(e); if (!t) return;
+  settle(t.src, t.s);
+  drag={ src:t.src, s:t.s, k:t.k, x:e.clientX, y:e.clientY, a:t.src.__c };
   this.setPointerCapture(e.pointerId); e.preventDefault();
 });
+$("pickPrev").addEventListener("wheel", function(e){
+  if (!P.L) return;
+  var t=slotAt(e); if (!t) return;
+  e.preventDefault();
+  zoomBy(t, Math.exp(-e.deltaY*(e.ctrlKey ? 0.01 : 0.002)));   // ctrlKey: 크롬의 트랙패드 핀치
+}, { passive:false });
+// 사파리 트랙패드 핀치
+var pinch=null;
+$("pickPrev").addEventListener("gesturestart", function(e){ pinch=P.L && slotAt(e); if (pinch) pinch.z=pinch.src.__z||1; });
+$("pickPrev").addEventListener("gesturechange", function(e){
+  if (!pinch) return;
+  e.preventDefault();
+  zoomBy(pinch, pinch.z*e.scale/(pinch.src.__z||1));
+});
+$("pickPrev").addEventListener("gestureend", function(){ pinch=null; });
 $("pickPrev").addEventListener("pointermove", function(e){
   if (!drag) return;
   var src=drag.src, sw=src.width, sh=src.height, b=coverBox(src, drag.s.w, drag.s.h);
