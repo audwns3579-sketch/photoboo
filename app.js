@@ -7,7 +7,7 @@
    ══════════════════════════════════════════ */
 function defaultConfig(){
   return {
-    version: 20,
+    version: 21,
     brand: "STUDIO 042",
     timer: 5,
     filter: "bright",
@@ -23,12 +23,12 @@ function defaultConfig(){
     layouts: [
       /* 인스탁스 프레임 (instax:true) — 와이드 링크로 보내는 1260 × 840 그대로입니다.
          필름의 흰 테두리가 곧 액자라서 사진은 끝까지 채우고, 컷 사이에도 경계선이 없습니다(사용자 요청).
-         필름 쪽으로 얇은 흰 띠(80)를 두고 이름을 아주 작게 넣습니다(MEI 부스처럼).
-         필름 창이 가장자리를 조금 가립니다(긴 쪽 양끝 약 11, 짧은 쪽 양끝 약 32). 띠는 그보다 넓게 둡니다.
-         가로: 사진 0~760, 아래 띠 760~840 에 이름(왼쪽 x 26, 2·4컷은 오른쪽 x 1234도), 글자 바닥 y 792.
-         세로: 왼쪽 띠 0~80, 사진 80~840. 이름은 아래에서 위로 읽게 돌려(rot -90) x 70, 아래 끝에서 시작.
+         필름 쪽으로 얇은 흰 띠(60)를 두고 이름을 아주 작게(15) 넣습니다(MEI 부스처럼). 사진을 키우려고 80 에서 줄였습니다(사용자 요청).
+         필름 창이 가장자리를 조금 가립니다(긴 쪽 양끝 약 11, 짧은 쪽 양끝 약 32). 띠 60 중 보이는 건 28 쯤입니다.
+         가로: 사진 0~780, 아래 띠 780~840 에 이름(왼쪽 x 26), 글자 바닥 y 801.
+         세로: 왼쪽 띠 0~60, 사진 60~840. 이름은 위에서 아래로 읽게 돌려(rot 90, 글자 윗부분이 사진 쪽) x 39, 위 끝에서 시작(사용자 요청).
          2·4컷은 문구가 둘입니다(사용자 요청). 가로는 왼쪽 문구를 왼쪽 맨 끝(x 18), 오른쪽 문구를 오른쪽 맨 끝(x 1250 오른쪽 맞춤)에 두고,
-         세로는 둘 다 왼쪽 띠에서 하나는 맨 아래(y 1242, 아래에서 위로), 하나는 맨 위(y 12, 오른쪽 맞춤)에 둡니다.
+         세로는 둘 다 왼쪽 띠에서 하나는 맨 위(y 18)에서 시작, 하나는 맨 아래 끝(y 1250, 오른쪽 맞춤)에 맞춥니다.
          오른쪽 맞춤은 글자 사이 간격(ls)이 마지막 글자 뒤에도 붙어서 6~8 더 바깥으로 줘야 양쪽 끝에서 같은 거리(약 19)가 됩니다.
          1컷은 문구가 하나라 그대로입니다. 끝에서 18 이상 띄워 필름 창이 가리는 가장자리(긴 쪽 약 11)를 피합니다. */
       {
@@ -36,10 +36,10 @@ function defaultConfig(){
         canvas: { w:1260, h:840 },
         frame: null,
         slots: [
-          {x:0, y:0, w:1260, h:760, shot:0}
+          {x:0, y:0, w:1260, h:780, shot:0}
         ],
         texts: [
-          {content:"042 STUDIO  -  DAEJEON", x:26, y:792, size:20, ls:6, weight:700, font:"body", align:"left", color:"#111111"}
+          {content:"042 STUDIO  -  DAEJEON", x:26, y:801, size:15, ls:6, weight:700, font:"body", align:"left", color:"#111111"}
         ],
         cut: { on:false, x:630, color:"#D8D0CA" }
       },
@@ -48,12 +48,12 @@ function defaultConfig(){
         canvas: { w:1260, h:840 },
         frame: null,
         slots: [
-          {x:0, y:0, w:630, h:760, shot:0},
-          {x:630, y:0, w:630, h:760, shot:1}
+          {x:0, y:0, w:630, h:780, shot:0},
+          {x:630, y:0, w:630, h:780, shot:1}
         ],
         texts: [
-          {content:"042 STUDIO  -  DAEJEON", x:18, y:792, size:20, ls:6, weight:700, font:"body", align:"left", color:"#111111"},
-          {content:"042 STUDIO  -  DAEJEON", x:1250, y:792, size:20, ls:6, weight:700, font:"body", align:"right", color:"#111111"}
+          {content:"042 STUDIO  -  DAEJEON", x:18, y:801, size:15, ls:6, weight:700, font:"body", align:"left", color:"#111111"},
+          {content:"042 STUDIO  -  DAEJEON", x:1250, y:801, size:15, ls:6, weight:700, font:"body", align:"right", color:"#111111"}
         ],
         cut: { on:false, x:630, color:"#D8D0CA" }
       },
@@ -62,14 +62,14 @@ function defaultConfig(){
         canvas: { w:1260, h:840 },
         frame: null,
         slots: [
-          {x:0, y:0, w:630, h:380, shot:0},
-          {x:630, y:0, w:630, h:380, shot:1},
-          {x:0, y:380, w:630, h:380, shot:2},
-          {x:630, y:380, w:630, h:380, shot:3}
+          {x:0, y:0, w:630, h:390, shot:0},
+          {x:630, y:0, w:630, h:390, shot:1},
+          {x:0, y:390, w:630, h:390, shot:2},
+          {x:630, y:390, w:630, h:390, shot:3}
         ],
         texts: [
-          {content:"042 STUDIO  -  DAEJEON", x:18, y:792, size:20, ls:6, weight:700, font:"body", align:"left", color:"#111111"},
-          {content:"042 STUDIO  -  DAEJEON", x:1250, y:792, size:20, ls:6, weight:700, font:"body", align:"right", color:"#111111"}
+          {content:"042 STUDIO  -  DAEJEON", x:18, y:801, size:15, ls:6, weight:700, font:"body", align:"left", color:"#111111"},
+          {content:"042 STUDIO  -  DAEJEON", x:1250, y:801, size:15, ls:6, weight:700, font:"body", align:"right", color:"#111111"}
         ],
         cut: { on:false, x:630, color:"#D8D0CA" }
       },
@@ -78,10 +78,10 @@ function defaultConfig(){
         canvas: { w:840, h:1260 },
         frame: null,
         slots: [
-          {x:80, y:0, w:760, h:1260, shot:0}
+          {x:60, y:0, w:780, h:1260, shot:0}
         ],
         texts: [
-          {content:"042 STUDIO  -  DAEJEON", x:70, y:1240, size:20, ls:6, weight:700, font:"body", align:"left", color:"#111111", rot:-90}
+          {content:"042 STUDIO  -  DAEJEON", x:39, y:18, size:15, ls:6, weight:700, font:"body", align:"left", color:"#111111", rot:90}
         ],
         cut: { on:false, x:420, color:"#D8D0CA" }
       },
@@ -90,12 +90,12 @@ function defaultConfig(){
         canvas: { w:840, h:1260 },
         frame: null,
         slots: [
-          {x:80, y:0, w:760, h:630, shot:0},
-          {x:80, y:630, w:760, h:630, shot:1}
+          {x:60, y:0, w:780, h:630, shot:0},
+          {x:60, y:630, w:780, h:630, shot:1}
         ],
         texts: [
-          {content:"042 STUDIO  -  DAEJEON", x:70, y:1242, size:20, ls:6, weight:700, font:"body", align:"left", color:"#111111", rot:-90},
-          {content:"042 STUDIO  -  DAEJEON", x:70, y:12, size:20, ls:6, weight:700, font:"body", align:"right", color:"#111111", rot:-90}
+          {content:"042 STUDIO  -  DAEJEON", x:39, y:18, size:15, ls:6, weight:700, font:"body", align:"left", color:"#111111", rot:90},
+          {content:"042 STUDIO  -  DAEJEON", x:39, y:1250, size:15, ls:6, weight:700, font:"body", align:"right", color:"#111111", rot:90}
         ],
         cut: { on:false, x:420, color:"#D8D0CA" }
       },
@@ -104,14 +104,14 @@ function defaultConfig(){
         canvas: { w:840, h:1260 },
         frame: null,
         slots: [
-          {x:80, y:0, w:380, h:630, shot:0},
-          {x:460, y:0, w:380, h:630, shot:1},
-          {x:80, y:630, w:380, h:630, shot:2},
-          {x:460, y:630, w:380, h:630, shot:3}
+          {x:60, y:0, w:390, h:630, shot:0},
+          {x:450, y:0, w:390, h:630, shot:1},
+          {x:60, y:630, w:390, h:630, shot:2},
+          {x:450, y:630, w:390, h:630, shot:3}
         ],
         texts: [
-          {content:"042 STUDIO  -  DAEJEON", x:70, y:1242, size:20, ls:6, weight:700, font:"body", align:"left", color:"#111111", rot:-90},
-          {content:"042 STUDIO  -  DAEJEON", x:70, y:12, size:20, ls:6, weight:700, font:"body", align:"right", color:"#111111", rot:-90}
+          {content:"042 STUDIO  -  DAEJEON", x:39, y:18, size:15, ls:6, weight:700, font:"body", align:"left", color:"#111111", rot:90},
+          {content:"042 STUDIO  -  DAEJEON", x:39, y:1250, size:15, ls:6, weight:700, font:"body", align:"right", color:"#111111", rot:90}
         ],
         cut: { on:false, x:420, color:"#D8D0CA" }
       }
@@ -224,7 +224,29 @@ function migrate(cfg){
   if (cfg.version < 20 && Array.isArray(cfg.filters) && cfg.filters.length && !cfg.filters.some(function(f){ return f.pick; })){
     defaultFilters().filter(function(f){ return f.pick; }).forEach(function(f){ cfg.filters.push(f); });
   }
-  if (cfg.version >= 8){ cfg.version = 20; return cfg; }
+  // 이름 띠를 80→60 으로 줄여 사진을 키우고, 글씨를 20→15 로, 세로 글씨를 위에서 아래로 읽게 바꿨습니다(사용자 요청).
+  // 예전 기본값 그대로인 칸·글자만 바꾸고, 관리자에서 직접 옮겨 둔 것과 프레임 이미지를 올린 것은 그대로 둡니다.
+  if (cfg.version < 21){
+    var old21 = {
+      wl1: { s:"0,0,1260,760", t:"26,792,0,20" },
+      wl2: { s:"0,0,630,760|630,0,630,760", t:"18,792,0,20|1250,792,0,20" },
+      wl4: { s:"0,0,630,380|630,0,630,380|0,380,630,380|630,380,630,380", t:"18,792,0,20|1250,792,0,20" },
+      wp1: { s:"80,0,760,1260", t:"70,1240,-90,20" },
+      wp2: { s:"80,0,760,630|80,630,760,630", t:"70,1242,-90,20|70,12,-90,20" },
+      wp4: { s:"80,0,380,630|460,0,380,630|80,630,380,630|460,630,380,630", t:"70,1242,-90,20|70,12,-90,20" }
+    };
+    defaultConfig().layouts.forEach(function(d){
+      var o = old21[d.id]; if (!o) return;
+      cfg.layouts.forEach(function(l){
+        if (l.id !== d.id || l.frame) return;
+        var ss = (l.slots || []).map(function(a){ return [a.x,a.y,a.w,a.h].join(","); }).join("|");
+        var ts = (l.texts || []).map(function(t){ return [t.x,t.y,t.rot || 0,t.size].join(","); }).join("|");
+        if (ss === o.s) l.slots = d.slots;
+        if (ts === o.t) l.texts = d.texts;
+      });
+    });
+  }
+  if (cfg.version >= 8){ cfg.version = 21; return cfg; }
 
   // 예전 보정은 이름만 있었습니다. 같은 이름의 새 보정으로 바꿔 끼웁니다.
   if (!Array.isArray(cfg.filters) || !cfg.filters.length){
@@ -248,7 +270,7 @@ function migrate(cfg){
     delete l.bg;
   });
   if (cfg.bgId === undefined) cfg.bgId = null;
-  cfg.version = 20;
+  cfg.version = 21;
   return cfg;
 }
 
